@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="text/babel" >
+    "use strict";
+    
+    let socket;
+
+    //let userNum = 0;
+
+    let canvas = document.querySelector("canvas");
+    let ctx = canvas.getContext("2d");
+    let WIDTH;
+    let HEIGHT;
+    let yourTicketNum;
+    let yourRoomNum;
+    let yourCharacters = {};    
+    
+    let draws = {};
+
+    const draw = (data) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+    
+    const setCalls = () => {
+      socket.on('getTicketNum', (data) => {
+        yourTicketNum = data.ticket;
+        yourRoomNum = data.room;
+        console.log("Great!");
+        console.log(`Your ticket num is: ${yourTicketNum}`);
+        
+        fillText(ctx, `You are in room: ${yourRoomNum}`, WIDTH/2 - 150, HEIGHT/2, "32pt nature", "purple");
+        
+        //ctx.drawImage(data.testImage, WIDTH/2 - 150, HEIGHT*3/4);
+      });
+      
+    }
+    
+    const handleMessage = (data) => {
+      draws[data.time] = data.coords;
+      draw(data);
+    }    
+    
+    function fillText(ctx, string, x, y, css, color) 
+	{
+      // https://developer.mozilla.org/en-US/docs/Web/CSS/font
+      ctx.save();
+      ctx.font = css;
+      ctx.fillStyle = color;
+      ctx.fillText(string, x, y);
+      ctx.restore();
+	}
+    
+    function genDirection()
+    {
+      let x = Math.floor((Math.random() * 10) - 5);
+      let y = Math.floor((Math.random() * 10) - 5);
+      return {xDir: x, yDir: y};
+    }
+
+    function getRandNum(min, max)
+    {
+      let value = Math.floor((Math.random() * (max-min+1)) + min);
+      return value;
+    }
+
+    function checkBoxClicked(e)
+    {
+      //console.log("In CheckCliked!");
+      let offset = getOffset(canvas);
+      /*
+      console.log(`X: ${boxXPos}`);
+      console.log(`Y: ${boxYPos}`);
+      console.log(`MouseX: ${e.clientX + offset.x}`);
+      console.log(`MouseY: ${e.clientY + offset.y}`);
+      */
+      if (e.clientX + offset.x > boxXPos
+         && e.clientX + offset.x < boxXPos + boxWidth
+         && e.clientY + offset.y > boxYPos
+         && e.clientY + offset.y < boxYPos + boxHeight)
+      {
+        myScore++;
+        scoreLabel.innerHTML = myScore;
+        socket.emit("clickedBox"); 
+      }
+    }
+    
+    //this helper function to determine the offset
+    //of the canvas from the rest of the page taken
+    //from the following source:
+    //https://www.kirupa.com/html5/getting_mouse_click_position.htm
+    function getOffset(el) 
+    {
+      var xPosition = 0;
+      var yPosition = 0;
+
+      while (el) {
+        if (el.tagName == "BODY") {
+          var xScrollPos = el.scrollLeft || document.documentElement.scrollLeft;
+          var yScrollPos = el.scrollTop || document.documentElement.scrollTop;
+
+          xPosition += (el.offsetLeft - xScrollPos + el.clientLeft);
+          yPosition += (el.offsetTop - yScrollPos + el.clientTop);
+        } else {
+          xPosition += (el.offsetLeft - el.scrollLeft + el.clientLeft);
+          yPosition += (el.offsetTop - el.scrollTop + el.clientTop);
+        }
+
+        el = el.offsetParent;
+      }
+      return {x: xPosition, y: yPosition};
+    }
+    
+    const init = () => {
+      socket = io.connect();
+      canvas.width = 750;
+      canvas.height = 500;
+      WIDTH = canvas.width;
+      HEIGHT = canvas.height;
+      setCalls();
+    }
+
+    window.onload = init;
+    
+  </script>
+  <style>
+    @font-face{
+      font-family: nature;
+      src: url("dream_orphans/dreamorphans.ttf");
+    }
+    canvas{
+      background-color: rgb(50, 150, 50);
+      font-family: nature;
+      position: absolute;
+      margin: 0px 0 0 -375px;
+      left: 50%;
+    }
+    body{
+      background-color: rgb(70, 10, 130);
+    }
+  </style>
+</head>
+<body>
+  <canvas>
+  </canvas>
+</body>
+</html>
