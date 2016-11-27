@@ -8,20 +8,262 @@
     
     let socket;
 
-    //let userNum = 0;
-
     let canvas = document.querySelector("canvas");
     let ctx = canvas.getContext("2d");
     let WIDTH;
     let HEIGHT;
     let yourTicketNum;
     let yourRoomNum;
-    let yourCharacters = {};    
+    let yourCharacters = {};
+
+    let ghostImg = new Image();
     
     let draws = {};
 
+    let CreateSpecialFeatures = (kncksOvr, psns, brns, brksShld, trgts) => {
+      let mySpecialFeatures = {};
+      mySpecialFeatures.knocksOver = kncksOvr;
+      mySpecialFeatures.burns = brns;
+      mySpecialFeatures.poisons = psns;
+      mySpecialFeatures.breaksShield = brksShld;
+      mySpecialFeatures.targets = trgts;
+    };
+
+    let CreateAttack = (nm, dmg, mna, dscrptn, spclFtrs) => {
+      let myAttack = {};
+      myAttack.name = nm;
+      myAttack.damage = dmg;
+      myAttack.mana = mna;
+      myAttack.description = dscrptn;
+      myAttack.specialFeatures = spclFtrs;
+      return myAttack;
+    };
+
+    let CreateKnight = (hlth, def, drftPts, cnKnckOvr, alv, psnd, brnd, flng, atcks) => {
+      let myKnight = {};
+      myKnight.HLTH = hlth;
+      myKnight.DEF = def;
+      myKnight.draftPoints = drftPts;
+      myKnight.canKnockOver = cnKnckOvr;
+      myKnight.alive = alv;
+      myKnight.poisoned = psnd;
+      myKnight.burned = brnd;
+      myKnight.flying = flng;
+      myKnight.attacks = atcks;
+      return myKnight;
+    };
+
+    let savageTiger = CreateKnight(5, 0, 2, "false", "true", "false", "false", "false",
+      [CreateAttack("Claw", 2, 0, "Claw the enemy apart.", 
+        CreateSpecialFeatures("false", "false", "false", "true", "front")
+      )]
+    );
+
+    let chipmonk = CreateKnight(2, 0, 1, "false", "true", "false", "false", "false",
+      [CreateAttack("Bonk", 1, 0, "Bonks the enemy with your head.",
+        CreateSpecialFeatures("true", "false", "false", "false", "any")
+      )]
+    );
+
+    let seaSerpent = CreateKnight(7, 0, 3, "false", "true", "false", "false", "true",
+      [CreateAttack("Wave Smash", 2, 0, "Smashes the enemy with a tidal wave.",
+        CreateSpecialFeatures("true", "false", "false", "false", "front")
+      ), CreateAttack("Sea Gust", 1, 1, "Sends a gust of wind at the enemies",
+        CreateSpecialFeatures("false", "false", "false", "true", "all")
+      )]
+    );
+
+    let blossomBird = CreateKnight(7, 0, 3, "false", "true", "false", "false", "true", 
+      [CreateAttack("Dive", 3, 0, "Dive straight through an enemy.",
+        CreateSpecialFeatures("false", "false", "false", "false", "any")
+      )]
+    );
+
+
+    /*
+    let sillyDog = {};
+
+    let schemingMonkey = {};
+
+    let sponge = {};
+
+    let smallCrab = {};
+
+    let slashingCrab = {};
+
+    let lightningSnake = {};
+
+    let thunderSnake = {};
+
+    let giantSnake = {};
+
+    let stupidSnake = {};
+
+    let thoughtDweller = {};
+
+    let slashingFrog = {};
+
+    let spaceMouse = {};
+
+    let thoughtfulCricket = {};
+
+    let savageSoulBear = {};
+
+    let monkey = {};
+
+    let punchingRunt = {};
+
+    let spaceDweller = {};
+
+    let witchBear = {};
+    */
+
+    
+
+    /*
+    let savageTigerTemp = {
+      HLTH: 5,
+      DEF: 0,
+      draftPoints: 2,
+      canKnockOver: false,
+      alive: true,
+      poisoned: false,
+      burned: false,
+      attack1: {
+        name: "Claw",
+        damage: 2,
+        mana: 0,
+        description: "Claw the enemy apart.",
+        specialFeatures: {
+          knocksOver: false,
+          burns: false,
+          poisons: false,
+          breaksShield: true,
+          targets: "front",
+        }
+      }
+      image: false,
+    };
+    
+    let chipmonkTemp = {
+      HLTH: 2,
+      DEF: 0,
+      draftPoints: 1,
+      canKnockOver: false,
+      alive: true,
+      poisoned: false,
+      burned: false,
+      attack1: {
+        mana: 0,
+        description: "Bonk the enemy with your head.",
+        name: "Bonk",
+        damage: 1,
+        specialFeatures: {
+          knocksOver: false,
+          burns: false,
+          poisons: false,
+          breaksShield:
+          targets: "any",
+        }
+      }
+      image: false,
+    };
+    
+    let seaSerpentTemp = {
+      HLTH: 7,
+      DEF: 0,
+      draftPoints: 3,
+      canKnockOver: false,
+      alive: true,
+      poisoned: false,
+      burned: false,
+      attack1: {
+        mana: 0,
+        description: "Bring the tide of the sea upon the enemy.",
+        name: "Wave Smash",
+        damage: 2,
+        specialFeatures: {
+          knocksOver: true,
+          burns: false,
+          poisons: false,
+          targets: "front",
+        }
+      }
+      image: false,
+    };
+
+    */
+
+    let yourTeam = [savageTiger, chipmonk, savageTiger, seaSerpent, blossomBird];
+
     const draw = (data) => {
+      
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      socket.emit("findBothTeams", {team: yourTeam, yourRoom: yourRoomNum});
+      
+      socket.on("receiveEnemyTeam", (data) => {
+        //you are red team
+        if (yourTicketNum % 2 == 1) {
+          ctx.save();
+          ctx.fillStyle = "rgb(0, 0, 255)";
+          for (var i = 0; i < data.team.length; i++)
+          {
+
+            ctx.fillRect(385 + 75*i, 250, 60, 60);
+            /*
+            ctx.fillRect(460, 250, 60, 60);
+            ctx.fillRect(535, 250, 60, 60);
+            ctx.fillRect(610, 250, 60, 60);
+            ctx.fillRect(685, 250, 60, 60);
+            */
+          }
+          ctx.restore();
+        }
+        else {
+          ctx.save();
+          ctx.fillStyle = "rgb(255, 0, 0)";
+          for (var i = 0; i < data.team.length; i++)
+          {
+            ctx.fillRect(305 - 75*i, 250, 60, 60);
+            /*
+            ctx.fillRect(80, 250, 60, 60);
+            ctx.fillRect(155, 250, 60, 60);
+            ctx.fillRect(230, 250, 60, 60);
+            ctx.fillRect(305, 250, 60, 60);
+            */
+          }
+          ctx.restore();
+        }
+      });
+      
+      /*
+      //you are red team
+      if (yourTicketNum % 2 == 1) {
+        ctx.save();
+        ctx.fillStyle = "rgb(255, 0, 0)";
+        for (var i = 0; i < yourTeam.length; i++)
+        {
+          ctx.fillRect(305 - 75*i, 250, 60, 60);
+        }
+        ctx.restore();
+        
+      }
+      //you are blue team
+      else {
+        ctx.save();
+        ctx.fillStyle = "rgb(0, 0, 255)";
+        for (var i = 0; i < yourTeam.length; i++)
+        {
+          
+          ctx.fillRect(385 + 75*i, 250, 60, 60);
+        }
+        ctx.restore();
+      }
+      */
+      
+      
+      
     }
     
     const setCalls = () => {
@@ -31,9 +273,9 @@
         console.log("Great!");
         console.log(`Your ticket num is: ${yourTicketNum}`);
         
-        fillText(ctx, `You are in room: ${yourRoomNum}`, WIDTH/2 - 150, HEIGHT/2, "32pt nature", "purple");
+        fillText(ctx, `You are in room: ${yourRoomNum}`, WIDTH*5/6, HEIGHT/12, "12pt nature", "purple");
         
-        //ctx.drawImage(data.testImage, WIDTH/2 - 150, HEIGHT*3/4);
+        ctx.drawImage(ghostImg, WIDTH/2 - 150, HEIGHT*3/4);
       });
       
     }
@@ -70,12 +312,6 @@
     {
       //console.log("In CheckCliked!");
       let offset = getOffset(canvas);
-      /*
-      console.log(`X: ${boxXPos}`);
-      console.log(`Y: ${boxYPos}`);
-      console.log(`MouseX: ${e.clientX + offset.x}`);
-      console.log(`MouseY: ${e.clientY + offset.y}`);
-      */
       if (e.clientX + offset.x > boxXPos
          && e.clientX + offset.x < boxXPos + boxWidth
          && e.clientY + offset.y > boxYPos
@@ -119,7 +355,16 @@
       canvas.height = 500;
       WIDTH = canvas.width;
       HEIGHT = canvas.height;
+      ghostImg.src = '../media/ghost.png';
       setCalls();
+      update();
+    }
+    
+    function update()
+    {
+      console.log("Updating!");
+      draw();
+      window.requestAnimationFrame(update);
     }
 
     window.onload = init;
@@ -128,22 +373,26 @@
   <style>
     @font-face{
       font-family: nature;
-      src: url("dream_orphans/dreamorphans.ttf");
+      src: url("../media/dream_orphans/dreamorphans.ttf");
     }
     canvas{
-      background-color: rgb(50, 150, 50);
+      background-color: rgb(90, 250, 90);
       font-family: nature;
       position: absolute;
       margin: 0px 0 0 -375px;
       left: 50%;
     }
     body{
-      background-color: rgb(70, 10, 130);
+      background-color: rgb(50, 0, 110);
     }
   </style>
 </head>
 <body>
   <canvas>
   </canvas>
+  <!--
+  <a href='/'></a>
+  <img src='/ghost' />
+  -->
 </body>
 </html>
