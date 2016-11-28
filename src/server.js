@@ -90,18 +90,18 @@ function getRandNum(min, max) {
 
 // pass in the http server into socketio and grab the websocket server as io
 const io = socketio(app);
-let setRoom = 0;
+let count = 0;
 const users = {};
 const openRooms = {};
 const allTeams = {};
 
 const onJoined = (sock) => {
   const socket = sock;
-  setRoom += 1;
-  const yourTicketNum = setRoom;
+  count += 1;
+  const yourTicketNum = count;
   users[yourTicketNum] = yourTicketNum;
   const roomNum = Math.floor((yourTicketNum + 1) / 2);
-  console.log(roomNum);
+  console.dir(yourTicketNum);
   socket.join(`room${roomNum}`);
   if (!openRooms[roomNum]) {
     openRooms[roomNum] = roomNum;
@@ -109,9 +109,61 @@ const onJoined = (sock) => {
   socket.emit('getTicketNum', { ticket: yourTicketNum, room: roomNum });
   
   
-  socket.on("findBothTeams", (data) => {
-    io.to(`room${roomNum}`).emit("receiveEnemyTeam", {team: data.team});
+  socket.on("sendRedTeam", (data) => {
+    
+    users[yourTicketNum].teamInfo = {
+      ticket: data.ticket,
+      room: data.room,
+      team: data.team,
+    };
+    
+  });
+  
+  socket.on("sendBlueTeam", (data) => {
+    
+    users[yourTicketNum].teamInfo = {
+      ticket: data.ticket,
+      room: data.room,
+      team: data.team,
+    };
+    
+  });
+    
+  socket.on("awaitBothPlayers", (data) => {
+    //console.log("Called!");
+    console.dir(data.ticket);
+    users[data.ticket].waiting = true;
+    //if you are not the first user and the person before you is waiting and you are an even-numbered player, stop waiting
+    if (data.ticket !== 1 && users[data.ticket - 1].waiting === true && users[data.ticket] % 2 == 0)
+    {
+      users[data.ticket].waiting = false;
+      users[data.ticket - 1].waiting = false;
+      io.sockets.in(`room${data.room}`).emit("stopWaiting");
+    }
+  });
+    
+  socket.on("grabTeams", (data) => {
+    console.dir("Grab teams!");
+    
+    //red team
+    if (data.ticket % 2 == 1) {
+      socket.emit("sendEnemyTeam", {theBadGuys: users[data.ticket - 1].teamInfo.team });
+    }
+    //blue team
+    else {
+      socket.emit("sendEnemyTeam", {theBadGuys: users[data.ticket + 1].teamInfo.team });
+    }
   })
+    
+  socket.on("bothPlayersAvailable", (data) => {
+    const userInfo = {
+      ticket: data.ticket,
+      room: data.room,
+      team: data.team,
+    };
+
+    io.sockets.in(`room${userInfo.room}`).emit("receiveEnemyTeam", {team: userInfo.team, ticket: userInfo.ticket });
+  });
 };
 
 io.sockets.on('connection', (sock) => {

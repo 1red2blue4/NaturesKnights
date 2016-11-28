@@ -15,6 +15,7 @@
     let yourTicketNum;
     let yourRoomNum;
     let yourCharacters = {};
+    let bothPlayersAvailable = false;
 
     let ghostImg = new Image();
     
@@ -118,159 +119,66 @@
     let witchBear = {};
     */
 
-    
-
-    /*
-    let savageTigerTemp = {
-      HLTH: 5,
-      DEF: 0,
-      draftPoints: 2,
-      canKnockOver: false,
-      alive: true,
-      poisoned: false,
-      burned: false,
-      attack1: {
-        name: "Claw",
-        damage: 2,
-        mana: 0,
-        description: "Claw the enemy apart.",
-        specialFeatures: {
-          knocksOver: false,
-          burns: false,
-          poisons: false,
-          breaksShield: true,
-          targets: "front",
-        }
-      }
-      image: false,
-    };
-    
-    let chipmonkTemp = {
-      HLTH: 2,
-      DEF: 0,
-      draftPoints: 1,
-      canKnockOver: false,
-      alive: true,
-      poisoned: false,
-      burned: false,
-      attack1: {
-        mana: 0,
-        description: "Bonk the enemy with your head.",
-        name: "Bonk",
-        damage: 1,
-        specialFeatures: {
-          knocksOver: false,
-          burns: false,
-          poisons: false,
-          breaksShield:
-          targets: "any",
-        }
-      }
-      image: false,
-    };
-    
-    let seaSerpentTemp = {
-      HLTH: 7,
-      DEF: 0,
-      draftPoints: 3,
-      canKnockOver: false,
-      alive: true,
-      poisoned: false,
-      burned: false,
-      attack1: {
-        mana: 0,
-        description: "Bring the tide of the sea upon the enemy.",
-        name: "Wave Smash",
-        damage: 2,
-        specialFeatures: {
-          knocksOver: true,
-          burns: false,
-          poisons: false,
-          targets: "front",
-        }
-      }
-      image: false,
-    };
-
-    */
-
     let yourTeam = [savageTiger, chipmonk, savageTiger, seaSerpent, blossomBird];
+    let enemyTeam = {};
 
-    const draw = (data) => {
+    const draw = (myTeam, theirTeam) => {
       
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
-      socket.emit("findBothTeams", {team: yourTeam, yourRoom: yourRoomNum});
+      //console.dir(theirTeam);
       
-      socket.on("receiveEnemyTeam", (data) => {
-        //you are red team
-        if (yourTicketNum % 2 == 1) {
-          ctx.save();
-          ctx.fillStyle = "rgb(0, 0, 255)";
-          for (var i = 0; i < data.team.length; i++)
-          {
-
-            ctx.fillRect(385 + 75*i, 250, 60, 60);
-            /*
-            ctx.fillRect(460, 250, 60, 60);
-            ctx.fillRect(535, 250, 60, 60);
-            ctx.fillRect(610, 250, 60, 60);
-            ctx.fillRect(685, 250, 60, 60);
-            */
-          }
-          ctx.restore();
-        }
-        else {
-          ctx.save();
-          ctx.fillStyle = "rgb(255, 0, 0)";
-          for (var i = 0; i < data.team.length; i++)
-          {
-            ctx.fillRect(305 - 75*i, 250, 60, 60);
-            /*
-            ctx.fillRect(80, 250, 60, 60);
-            ctx.fillRect(155, 250, 60, 60);
-            ctx.fillRect(230, 250, 60, 60);
-            ctx.fillRect(305, 250, 60, 60);
-            */
-          }
-          ctx.restore();
-        }
-      });
-      
-      /*
       //you are red team
       if (yourTicketNum % 2 == 1) {
+        //console.dir(myTeam);
         ctx.save();
-        ctx.fillStyle = "rgb(255, 0, 0)";
-        for (var i = 0; i < yourTeam.length; i++)
+        ctx.fillStyle = "red";
+        for (let i = 0; i < myTeam.length; i++)
+        {
+          ctx.fillRect(385 + 75*i, 250, 60, 60);
+        }
+        ctx.restore();
+        if (bothPlayersAvailable)
+        {
+          //console.dir(theirTeam);
+          ctx.save();
+          ctx.fillStyle = "blue";
+          for (let i = 0; i < theirTeam.length; i++)
+          {
+            ctx.fillRect(305 - 75*i, 250, 60, 60);
+          }
+          ctx.restore();
+        }
+      }
+      else
+      {
+        //console.dir(myTeam);
+        ctx.save();
+        ctx.fillStyle = "blue";
+        for (let i = 0; i < myTeam.length; i++)
         {
           ctx.fillRect(305 - 75*i, 250, 60, 60);
         }
         ctx.restore();
-        
-      }
-      //you are blue team
-      else {
-        ctx.save();
-        ctx.fillStyle = "rgb(0, 0, 255)";
-        for (var i = 0; i < yourTeam.length; i++)
-        {
-          
-          ctx.fillRect(385 + 75*i, 250, 60, 60);
+        if (bothPlayersAvailable) {
+          //console.dir(theirTeam);
+          ctx.save();
+          ctx.fillStyle = "red";
+          for (let i = 0; i < theirTeam.length; i++)
+          {
+            ctx.fillRect(385 + 75*i, 250, 60, 60);
+          }
         }
-        ctx.restore();
-      }
-      */
+      }     
       
       
-      
-    }
+    };
     
     const setCalls = () => {
       socket.on('getTicketNum', (data) => {
         yourTicketNum = data.ticket;
         yourRoomNum = data.room;
-        console.log("Great!");
+        //console.log("Great!");
         console.log(`Your ticket num is: ${yourTicketNum}`);
         
         fillText(ctx, `You are in room: ${yourRoomNum}`, WIDTH*5/6, HEIGHT/12, "12pt nature", "purple");
@@ -278,12 +186,38 @@
         ctx.drawImage(ghostImg, WIDTH/2 - 150, HEIGHT*3/4);
       });
       
-    }
+      socket.on("stopWaiting", () => {
+        console.dir("Yeah!");
+        bothPlayersAvailable = true;
+        socket.emit("grabTeams", { ticket: yourTicketNum });
+      });
+      
+      socket.on("sendEnemyTeam", (data) => {
+        console.dir(data);
+        enemyTeam = data.theBadGuys;
+      });
+      
+    };
+    
+    const setup = () => {
+      //if you are red team, send to server
+      if (yourTicketNum % 2 == 1) {
+        socket.emit("sendRedTeam", {team: yourTeam, room: yourRoomNum, ticket: yourTicketNum});
+      }
+      //otherwise, you are blue team; send to server
+      else {
+        socket.emit("sendBlueTeam", {team: yourTeam, room: yourRoomNum, ticket: yourTicketNum});
+      }
+      
+      console.log(yourTicketNum);
+      
+      socket.emit("awaitBothPlayers", { ticket: yourTicketNum, room: yourRoomNum, ready: bothPlayersAvailable });
+    };
     
     const handleMessage = (data) => {
       draws[data.time] = data.coords;
       draw(data);
-    }    
+    };    
     
     function fillText(ctx, string, x, y, css, color) 
 	{
@@ -307,47 +241,6 @@
       let value = Math.floor((Math.random() * (max-min+1)) + min);
       return value;
     }
-
-    function checkBoxClicked(e)
-    {
-      //console.log("In CheckCliked!");
-      let offset = getOffset(canvas);
-      if (e.clientX + offset.x > boxXPos
-         && e.clientX + offset.x < boxXPos + boxWidth
-         && e.clientY + offset.y > boxYPos
-         && e.clientY + offset.y < boxYPos + boxHeight)
-      {
-        myScore++;
-        scoreLabel.innerHTML = myScore;
-        socket.emit("clickedBox"); 
-      }
-    }
-    
-    //this helper function to determine the offset
-    //of the canvas from the rest of the page taken
-    //from the following source:
-    //https://www.kirupa.com/html5/getting_mouse_click_position.htm
-    function getOffset(el) 
-    {
-      var xPosition = 0;
-      var yPosition = 0;
-
-      while (el) {
-        if (el.tagName == "BODY") {
-          var xScrollPos = el.scrollLeft || document.documentElement.scrollLeft;
-          var yScrollPos = el.scrollTop || document.documentElement.scrollTop;
-
-          xPosition += (el.offsetLeft - xScrollPos + el.clientLeft);
-          yPosition += (el.offsetTop - yScrollPos + el.clientTop);
-        } else {
-          xPosition += (el.offsetLeft - el.scrollLeft + el.clientLeft);
-          yPosition += (el.offsetTop - el.scrollTop + el.clientTop);
-        }
-
-        el = el.offsetParent;
-      }
-      return {x: xPosition, y: yPosition};
-    }
     
     const init = () => {
       socket = io.connect();
@@ -357,13 +250,14 @@
       HEIGHT = canvas.height;
       ghostImg.src = '../media/ghost.png';
       setCalls();
+      setup();
       update();
     }
     
     function update()
     {
-      console.log("Updating!");
-      draw();
+      //console.log("Updating!");
+      draw(yourTeam, enemyTeam);
       window.requestAnimationFrame(update);
     }
 
