@@ -175,6 +175,19 @@
     };
     
     const setCalls = () => {
+      
+      socket.on("stopWaiting", () => {
+        //console.dir("Yeah!");
+        bothPlayersAvailable = true;
+        socket.emit("grabTeams", { ticket: yourTicketNum, team: yourTeam, room: yourRoomNum});
+      });
+      
+      socket.on("sendEnemyTeam", (data) => {
+        //console.dir(data);
+        enemyTeam = data.theBadGuys;
+        console.dir(enemyTeam);
+      });
+      
       socket.on('getTicketNum', (data) => {
         yourTicketNum = data.ticket;
         yourRoomNum = data.room;
@@ -184,21 +197,18 @@
         fillText(ctx, `You are in room: ${yourRoomNum}`, WIDTH*5/6, HEIGHT/12, "12pt nature", "purple");
         
         ctx.drawImage(ghostImg, WIDTH/2 - 150, HEIGHT*3/4);
+        
+        socket.emit("sendTeam", {team: yourTeam, room: yourRoomNum, ticket: yourTicketNum});
+
+        //console.log(yourTicketNum);
+
+        socket.emit("awaitBothPlayers", { ticket: yourTicketNum, room: yourRoomNum, ready: bothPlayersAvailable });
       });
       
-      socket.on("stopWaiting", () => {
-        console.dir("Yeah!");
-        bothPlayersAvailable = true;
-        socket.emit("grabTeams", { ticket: yourTicketNum });
-      });
-      
-      socket.on("sendEnemyTeam", (data) => {
-        console.dir(data);
-        enemyTeam = data.theBadGuys;
-      });
       
     };
     
+    /*
     const setup = () => {
       //if you are red team, send to server
       if (yourTicketNum % 2 == 1) {
@@ -213,6 +223,7 @@
       
       socket.emit("awaitBothPlayers", { ticket: yourTicketNum, room: yourRoomNum, ready: bothPlayersAvailable });
     };
+    */
     
     const handleMessage = (data) => {
       draws[data.time] = data.coords;
@@ -250,7 +261,7 @@
       HEIGHT = canvas.height;
       ghostImg.src = '../media/ghost.png';
       setCalls();
-      setup();
+      //setup();
       update();
     }
     

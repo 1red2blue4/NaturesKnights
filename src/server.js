@@ -50,7 +50,7 @@ const onRequest = (request, response) => {
   });
   */
   
-  console.log(request.url);
+  //console.log(request.url);
   
   if (request.url === "/")
   {
@@ -94,6 +94,8 @@ let count = 0;
 const users = {};
 const openRooms = {};
 const allTeams = {};
+const teamInfo = {};
+const waiting = {};
 
 const onJoined = (sock) => {
   const socket = sock;
@@ -109,32 +111,24 @@ const onJoined = (sock) => {
   socket.emit('getTicketNum', { ticket: yourTicketNum, room: roomNum });
   
   
-  socket.on("sendRedTeam", (data) => {
+  socket.on("sendTeam", (data) => {
     
-    users[yourTicketNum].teamInfo = {
+    const teamInfo = {
       ticket: data.ticket,
       room: data.room,
       team: data.team,
     };
     
-  });
-  
-  socket.on("sendBlueTeam", (data) => {
+    teamInfo[data.ticket] = teamInfo;
     
-    users[yourTicketNum].teamInfo = {
-      ticket: data.ticket,
-      room: data.room,
-      team: data.team,
-    };
+    //console.dir(teamInfo[data.ticket]);
     
   });
     
   socket.on("awaitBothPlayers", (data) => {
-    //console.log("Called!");
-    console.dir(data.ticket);
-    users[data.ticket].waiting = true;
+    waiting[data.ticket] = true;
     //if you are not the first user and the person before you is waiting and you are an even-numbered player, stop waiting
-    if (data.ticket !== 1 && users[data.ticket - 1].waiting === true && users[data.ticket] % 2 == 0)
+    if (data.ticket !== 1 && waiting[data.ticket - 1] === true && users[data.ticket] % 2 == 0)
     {
       users[data.ticket].waiting = false;
       users[data.ticket - 1].waiting = false;
@@ -143,16 +137,9 @@ const onJoined = (sock) => {
   });
     
   socket.on("grabTeams", (data) => {
-    console.dir("Grab teams!");
     
-    //red team
-    if (data.ticket % 2 == 1) {
-      socket.emit("sendEnemyTeam", {theBadGuys: users[data.ticket - 1].teamInfo.team });
-    }
-    //blue team
-    else {
-      socket.emit("sendEnemyTeam", {theBadGuys: users[data.ticket + 1].teamInfo.team });
-    }
+    socket.broadcast.to(`room${data.room}`).emit("sendEnemyTeam", {theBadGuys: data.team });
+    
   })
     
   socket.on("bothPlayersAvailable", (data) => {
