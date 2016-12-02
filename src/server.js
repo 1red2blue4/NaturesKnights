@@ -3,6 +3,9 @@ const fs = require('fs');
 const socketio = require('socket.io');
 //const express = require('express');
 const path = require('path');
+//const utilities = require('./utilities');
+
+
 
 //const expressApp = express();
 
@@ -13,7 +16,7 @@ const port = process.env.PORT || process.env.NODE_PORT || 3500;
 // (in this case the same folder as the server js file)
 
 //file names in the client folder
-const fileNames = ['/index.html', '/media/ghost.png', '/media/logo.png'];
+const fileNames = ['/index.html', '/media/ghost.png', '/media/logo.png', '/media/dream_orphans/dreamorphans.ttf'];
 
 const cachedFiles = {};
 
@@ -77,7 +80,22 @@ const onRequest = (request, response) => {
   //response.end();
 };
 
+
 const app = http.createServer(onRequest).listen(port);
+
+/*
+const drawRectWithStrokeS = utilities.drawRectWithStroke;
+
+const drawRectS = utilities.drawRect;
+
+const fillTextS = utilities.fillText;
+
+const genDirectionS = utilities.genDirection;
+
+const getRandomNumS = utilities.getRandomNum;
+*/
+
+//console.dir(drawRect);
 
 console.log(`Listening on 127.0.0.1:${port}`);
 
@@ -108,7 +126,16 @@ const onJoined = (sock) => {
   if (!openRooms[roomNum]) {
     openRooms[roomNum] = roomNum;
   }
+  
+  //console.dir(drawRect);
+  
   socket.emit('getTicketNum', { ticket: yourTicketNum, room: roomNum });
+  
+  //console.dir(drawRectS);
+  
+  /*
+  socket.emit('sendUtils', { drawRectWithStroke: drawRectWithStrokeS, drawRect: drawRectS, fillText: fillTextS, genDirection: genDirectionS, getRandomNum: getRandomNumS });
+  */
   
   
   socket.on("sendTeam", (data) => {
@@ -121,9 +148,8 @@ const onJoined = (sock) => {
     
     teamInfo[data.ticket] = teamInfo;
     
-    //console.dir(teamInfo[data.ticket]);
-    
   });
+  
     
   socket.on("awaitBothPlayers", (data) => {
     waiting[data.ticket] = true;
@@ -136,12 +162,6 @@ const onJoined = (sock) => {
     }
   });
     
-  socket.on("grabTeams", (data) => {
-    
-    socket.broadcast.to(`room${data.room}`).emit("sendEnemyTeam", {theBadGuys: data.team });
-    
-  })
-    
   socket.on("bothPlayersAvailable", (data) => {
     const userInfo = {
       ticket: data.ticket,
@@ -151,6 +171,18 @@ const onJoined = (sock) => {
 
     io.sockets.in(`room${userInfo.room}`).emit("receiveEnemyTeam", {team: userInfo.team, ticket: userInfo.ticket });
   });
+  
+  socket.on("grabTeams", (data) => {
+    socket.broadcast.to(`room${data.room}`).emit("sendEnemyTeam", {theBadGuys: data.team });
+    
+  });
+  
+  socket.on("takeTurn", (data) => {
+    
+    socket.emit("nextTurn", { next: data.turnOrder[0] });
+    
+  });
+  
 };
 
 io.sockets.on('connection', (sock) => {

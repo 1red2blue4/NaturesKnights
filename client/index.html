@@ -1,11 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <link rel="icon" type="image/png" href="media/logo.png" />
+  <style>
+    @font-face{
+      font-family: nature;
+      src: url(media/dream_orphans/dreamorphans.ttf);
+    }
+    canvas{
+      background-color: rgb(90, 250, 90);
+      font-family: nature;
+      position: absolute;
+      margin: 0px 0 0 -375px;
+      left: 50%;
+    }
+    body{
+      background-color: rgb(50, 0, 110);
+    }
+    h1{
+      text-align: center;
+      font-family: nature;
+      font-size: 30pt;
+    }
+  </style>
   <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
-  <script type="text/babel" >
+  <script type="text/babel">
+  
     "use strict";
-    
+
+    /*
+    let drawRectWithStroke = () => {};
+
+    let drawRect = () => {};
+
+    let fillText = () => {};
+
+    let genDirection = () => {};
+
+    let getRandomNum = () => {};
+    */
+
     let socket;
 
     let canvas = document.querySelector("canvas");
@@ -16,18 +51,39 @@
     let yourRoomNum;
     let yourCharacters = {};
     let bothPlayersAvailable = false;
+    let takingTurn = false;
+
+    let buttonWidth = 125;
+    let buttonHeight = 75;
+    let buttonPosY = 375;
+
+    let buttonPosX1Player2 = 20;
+    let buttonPosX2Player2 = 170;
+    let buttonPosX3Player2 = 320;
+
+    let buttonPosX1Player1 = 350;
+    let buttonPosX2Player1 = 500;
+    let buttonPosX3Player1 = 650;
+
+    let team2StartPos = 305;
+    let team1StartPos = 385;
+
+    let buttonColor = "rgb(240, 250, 80)";
+
+    let teamMemberIncrement = 75;
 
     let ghostImg = new Image();
-    
+
     let draws = {};
 
-    let CreateSpecialFeatures = (kncksOvr, psns, brns, brksShld, trgts) => {
+    let CreateSpecialFeatures = (kncksOvr, psns, brns, brksShld, htsFrmTp, trgts) => {
       let mySpecialFeatures = {};
       mySpecialFeatures.knocksOver = kncksOvr;
       mySpecialFeatures.burns = brns;
       mySpecialFeatures.poisons = psns;
       mySpecialFeatures.breaksShield = brksShld;
       mySpecialFeatures.targets = trgts;
+      mySpecialFeatures.hitsFromTop = htsFrmTp
     };
 
     let CreateAttack = (nm, dmg, mna, dscrptn, spclFtrs) => {
@@ -40,10 +96,11 @@
       return myAttack;
     };
 
-    let CreateKnight = (hlth, def, drftPts, cnKnckOvr, alv, psnd, brnd, flng, atcks) => {
+    let CreateKnight = (hlth, def, spd, drftPts, cnKnckOvr, alv, psnd, brnd, flng, atcks) => {
       let myKnight = {};
       myKnight.HLTH = hlth;
       myKnight.DEF = def;
+      myKnight.speed = spd;
       myKnight.draftPoints = drftPts;
       myKnight.canKnockOver = cnKnckOvr;
       myKnight.alive = alv;
@@ -54,29 +111,29 @@
       return myKnight;
     };
 
-    let savageTiger = CreateKnight(5, 0, 2, "false", "true", "false", "false", "false",
+    let savageTiger = CreateKnight(5, 0, 13, 2, "false", "true", "false", "false", "false",
       [CreateAttack("Claw", 2, 0, "Claw the enemy apart.", 
-        CreateSpecialFeatures("false", "false", "false", "true", "front")
+        CreateSpecialFeatures("false", "false", "false", "true", "false", "front")
       )]
     );
 
-    let chipmonk = CreateKnight(2, 0, 1, "false", "true", "false", "false", "false",
+    let chipmonk = CreateKnight(2, 0, 7, 1, "false", "true", "false", "false", "false",
       [CreateAttack("Bonk", 1, 0, "Bonks the enemy with your head.",
-        CreateSpecialFeatures("true", "false", "false", "false", "any")
+        CreateSpecialFeatures("true", "false", "false", "false", "true", "any")
       )]
     );
 
-    let seaSerpent = CreateKnight(7, 0, 3, "false", "true", "false", "false", "true",
+    let seaSerpent = CreateKnight(7, 0, 8, 3, "false", "true", "false", "false", "true",
       [CreateAttack("Wave Smash", 2, 0, "Smashes the enemy with a tidal wave.",
-        CreateSpecialFeatures("true", "false", "false", "false", "front")
+        CreateSpecialFeatures("true", "false", "false", "false", "false", "front")
       ), CreateAttack("Sea Gust", 1, 1, "Sends a gust of wind at the enemies",
-        CreateSpecialFeatures("false", "false", "false", "true", "all")
+        CreateSpecialFeatures("false", "false", "false", "true", "false", "all")
       )]
     );
 
-    let blossomBird = CreateKnight(7, 0, 3, "false", "true", "false", "false", "true", 
+    let blossomBird = CreateKnight(7, 0, 12, 3, "false", "true", "false", "false", "true", 
       [CreateAttack("Dive", 3, 0, "Dive straight through an enemy.",
-        CreateSpecialFeatures("false", "false", "false", "false", "any")
+        CreateSpecialFeatures("false", "false", "false", "false", "true", "any")
       )]
     );
 
@@ -121,138 +178,250 @@
 
     let yourTeam = [savageTiger, chipmonk, savageTiger, seaSerpent, blossomBird];
     let enemyTeam = {};
+    let turnOrder = {};
 
     const draw = (myTeam, theirTeam) => {
-      
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      //console.dir(theirTeam);
-      
+
       //you are red team
       if (yourTicketNum % 2 == 1) {
-        //console.dir(myTeam);
-        ctx.save();
-        ctx.fillStyle = "red";
-        for (let i = 0; i < myTeam.length; i++)
-        {
-          ctx.fillRect(385 + 75*i, 250, 60, 60);
-        }
-        ctx.restore();
-        if (bothPlayersAvailable)
-        {
-          //console.dir(theirTeam);
-          ctx.save();
-          ctx.fillStyle = "blue";
-          for (let i = 0; i < theirTeam.length; i++)
-          {
-            ctx.fillRect(305 - 75*i, 250, 60, 60);
-          }
-          ctx.restore();
-        }
+        drawUI(myTeam, theirTeam, team1StartPos, team2StartPos, buttonPosX1Player1, buttonPosX2Player1, buttonPosX3Player1, "red", "blue", 1);
       }
       else
       {
-        //console.dir(myTeam);
-        ctx.save();
-        ctx.fillStyle = "blue";
-        for (let i = 0; i < myTeam.length; i++)
-        {
-          ctx.fillRect(305 - 75*i, 250, 60, 60);
-        }
-        ctx.restore();
-        if (bothPlayersAvailable) {
-          //console.dir(theirTeam);
-          ctx.save();
-          ctx.fillStyle = "red";
-          for (let i = 0; i < theirTeam.length; i++)
-          {
-            ctx.fillRect(385 + 75*i, 250, 60, 60);
-          }
-        }
+        drawUI(myTeam, theirTeam, team1StartPos, team2StartPos, buttonPosX1Player2, buttonPosX2Player2, buttonPosX3Player2, "blue", "red", 2);
       }     
+
+
+    };
+
+    const drawUI = (myTeam, theirTeam, yourTeamStartPos, enemyTeamStartPos, buttonPosX1, buttonPosX2, buttonPosX3, yourColor, theirColor, playerNum) => {
       
+      //draw your team
+      for (let i = 0; i < myTeam.length; i++)
+      {
+        drawRect(yourTeamStartPos + teamMemberIncrement*i, 250, 60, 60, yourColor);
+      }
+      //draw your button options
+      if (takingTurn)
+      {
+        drawRect(buttonPosX1, buttonPosY, buttonWidth, buttonHeight, buttonColor);
+        fillText("Test Text", buttonPosX1 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+        drawRect(buttonPosX2, buttonPosY, buttonWidth, buttonHeight, buttonColor);
+        fillText("Different Text", buttonPosX2 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+        drawRect(buttonPosX3, buttonPosY, buttonWidth, buttonHeight, buttonColor);
+        fillText("Other Text", buttonPosX3 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+      }
+      //if other player is here, draw them
+      if (bothPlayersAvailable)
+      {
+        for (let i = 0; i < theirTeam.length; i++)
+        {
+          drawRect(enemyTeamStartPos - teamMemberIncrement*i, 250, 60, 60, theirColor);
+        }
+      }
       
     };
-    
+
+    /*
+    const drawUIPlayer1 = (myTeam, theirTeam) => {
+      for (let i = 0; i < myTeam.length; i++)
+      {
+        drawRect(team1StartPos + teamMemberIncrement*i, 250, 60, 60, "red");
+      }
+      if (takingTurn)
+      {
+        drawRect(buttonPosX1Player1, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
+        fillText("Test Text", buttonPosX1Player1 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+        drawRect(buttonPosX2Player1, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
+        fillText("Different Text", buttonPosX2Player1 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+        drawRect(buttonPosX3Player1, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
+        fillText("Other Text", buttonPosX3Player1 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+      }
+      if (bothPlayersAvailable)
+      {
+        for (let i = 0; i < theirTeam.length; i++)
+        {
+          drawRect(305 - 75*i, 250, 60, 60, "blue");
+        }
+      }
+    };
+
+    const drawUIPlayer2 = (myTeam, theirTeam) => {
+      for (let i = 0; i < myTeam.length; i++)
+      {
+        drawRect(team2StartPos - teamMemberIncrement*i, 250, 60, 60, "blue");
+      }
+      if (takingTurn)
+      {
+        drawRect(buttonPosX1Player2, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
+        fillText("Test Text", buttonPosX1Player2 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+        drawRect(buttonPosX2Player2, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
+        fillText("Different Text", buttonPosX2Player2 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+        drawRect(buttonPosX3Player2, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
+        fillText("Other Text", buttonPosX3Player2 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+      }
+      if (bothPlayersAvailable) {
+        for (let i = 0; i < theirTeam.length; i++)
+        {
+          drawRect(385 + 75*i, 250, 60, 60, "red");
+        }
+      }
+    };
+    */
+
     const setCalls = () => {
-      
-      socket.on("stopWaiting", () => {
-        //console.dir("Yeah!");
-        bothPlayersAvailable = true;
-        socket.emit("grabTeams", { ticket: yourTicketNum, team: yourTeam, room: yourRoomNum});
-      });
-      
-      socket.on("sendEnemyTeam", (data) => {
-        //console.dir(data);
-        enemyTeam = data.theBadGuys;
-        console.dir(enemyTeam);
-      });
-      
+
+      //get your ticket number, room number, and send your team to the server
+      //also sends utilities
       socket.on('getTicketNum', (data) => {
         yourTicketNum = data.ticket;
         yourRoomNum = data.room;
         //console.log("Great!");
         console.log(`Your ticket num is: ${yourTicketNum}`);
-        
-        fillText(ctx, `You are in room: ${yourRoomNum}`, WIDTH*5/6, HEIGHT/12, "12pt nature", "purple");
-        
-        ctx.drawImage(ghostImg, WIDTH/2 - 150, HEIGHT*3/4);
-        
-        socket.emit("sendTeam", {team: yourTeam, room: yourRoomNum, ticket: yourTicketNum});
 
-        //console.log(yourTicketNum);
+        fillText(ctx, `You are in room: ${yourRoomNum}`, WIDTH*5/6, HEIGHT/12, "12px nature", "purple");
+        
+        /*
+        drawRectWithStroke = data.drawRectWithStroke;
+        drawRect = data.drawRect;
+        fillText = data.fillText;
+        genDirection = data.genDirection;
+        getRandomNum = data.getRandomNum;
+        console.log(data.drawRect);
+        */
+
+        ctx.drawImage(ghostImg, WIDTH/2 - 150, HEIGHT*3/4);
+
+        socket.emit("sendTeam", {team: yourTeam, room: yourRoomNum, ticket: yourTicketNum});
 
         socket.emit("awaitBothPlayers", { ticket: yourTicketNum, room: yourRoomNum, ready: bothPlayersAvailable });
       });
       
-      
+      /*
+      socket.on("sendUtils", (data) => {
+        //console.log("Utilities sent!");
+        drawRectWithStroke = data.drawRectWithStroke;
+        drawRect = data.drawRect;
+        fillText = data.fillText;
+        genDirection = data.genDirection;
+        getRandomNum = data.getRandomNum;
+        //console.dir(drawRect);
+      });
+      */
+
+      //once both players have arrived, start
+      socket.on("stopWaiting", () => {
+        bothPlayersAvailable = true;
+        socket.emit("grabTeams", { ticket: yourTicketNum, team: yourTeam, room: yourRoomNum});
+      });
+
+      //receive the enemy team from the server
+      socket.on("sendEnemyTeam", (data) => {
+        enemyTeam = data.theBadGuys;
+
+        //once the enemy team is received, set gameplay order
+
+        //find out the order of play
+        const allCharactersBasedOnSpeed = [];
+
+        for (let i = 0; i < yourTeam.length; i++)
+        {
+          allCharactersBasedOnSpeed[i] = yourTeam[i];
+          allCharactersBasedOnSpeed[i].team = "me";
+        }
+        for (let i = yourTeam.length; i < yourTeam.length + enemyTeam.length; i++)
+        {
+          allCharactersBasedOnSpeed[i] = enemyTeam[i - yourTeam.length];
+          allCharactersBasedOnSpeed[i].team = "them";
+        }
+
+        //order the characters
+        allCharactersBasedOnSpeed.sort((a, b) => {
+          return a.speed - b.speed;
+        });
+        allCharactersBasedOnSpeed.reverse();
+
+        //doctor who owns what character
+        if (yourTicketNum % 2 == 0)
+        {
+          for (let i = 0; i < yourTeam.length + enemyTeam.length; i++)
+          {
+            if (allCharactersBasedOnSpeed[i].team === "me")
+            {
+              allCharactersBasedOnSpeed[i].team = "them";
+            }
+            else if (allCharactersBasedOnSpeed[i].team === "them")
+            {
+              allCharactersBasedOnSpeed[i].team = "me";
+            }
+          }
+        }
+
+        //console.dir(allCharactersBasedOnSpeed);
+
+        //save the turn order
+        turnOrder = allCharactersBasedOnSpeed;
+
+        console.dir(turnOrder[0].team);
+
+        socket.emit("takeTurn", {turnOrder});
+      });
+
+      socket.on("nextTurn", (data) => {
+        console.dir(data.next);
+        if (data.next.team === "me")
+        {
+          takingTurn = true;
+        }
+      });
+
     };
     
-    /*
-    const setup = () => {
-      //if you are red team, send to server
-      if (yourTicketNum % 2 == 1) {
-        socket.emit("sendRedTeam", {team: yourTeam, room: yourRoomNum, ticket: yourTicketNum});
-      }
-      //otherwise, you are blue team; send to server
-      else {
-        socket.emit("sendBlueTeam", {team: yourTeam, room: yourRoomNum, ticket: yourTicketNum});
-      }
-      
-      console.log(yourTicketNum);
-      
-      socket.emit("awaitBothPlayers", { ticket: yourTicketNum, room: yourRoomNum, ready: bothPlayersAvailable });
+    const drawRectWithStroke = (xPos, yPos, width, height, fillStyle, strokeStyle) => {
+      ctx.save();
+      ctx.fillStyle = fillStyle;
+      ctx.strokeStyle = strokeStyle;
+      ctx.fillRect(xPos, yPos, width, height);
+      ctx.stroke();
+      ctx.restore();
     };
-    */
-    
-    const handleMessage = (data) => {
-      draws[data.time] = data.coords;
-      draw(data);
-    };    
-    
-    function fillText(ctx, string, x, y, css, color) 
-	{
-      // https://developer.mozilla.org/en-US/docs/Web/CSS/font
+
+    const drawRect = (xPos, yPos, width, height, fillStyle) => {
+      ctx.save();
+      ctx.fillStyle = fillStyle;
+      ctx.fillRect(xPos, yPos, width, height);
+      ctx.stroke();
+      ctx.restore();
+    };
+
+    const fillText = (string, x, y, css, color, textAlign, textBaseline) => {
       ctx.save();
       ctx.font = css;
+      ctx.textAlign = textAlign;
+      ctx.textBaseline = textBaseline;
       ctx.fillStyle = color;
       ctx.fillText(string, x, y);
       ctx.restore();
-	}
-    
-    function genDirection()
-    {
+    };
+
+    const genDirection = () => {
       let x = Math.floor((Math.random() * 10) - 5);
       let y = Math.floor((Math.random() * 10) - 5);
       return {xDir: x, yDir: y};
     }
 
-    function getRandNum(min, max)
-    {
+    const getRandNum = (min, max) => {
       let value = Math.floor((Math.random() * (max-min+1)) + min);
       return value;
     }
-    
+
+    const handleMessage = (data) => {
+      draws[data.time] = data.coords;
+      draw(data);
+    };    
+
     const init = () => {
       socket = io.connect();
       canvas.width = 750;
@@ -261,43 +430,25 @@
       HEIGHT = canvas.height;
       ghostImg.src = '../media/ghost.png';
       setCalls();
-      //setup();
+      //startFight();
       update();
     }
-    
+
     function update()
     {
-      //console.log("Updating!");
       draw(yourTeam, enemyTeam);
       window.requestAnimationFrame(update);
     }
 
     window.onload = init;
-    
+
   </script>
-  <style>
-    @font-face{
-      font-family: nature;
-      src: url("../media/dream_orphans/dreamorphans.ttf");
-    }
-    canvas{
-      background-color: rgb(90, 250, 90);
-      font-family: nature;
-      position: absolute;
-      margin: 0px 0 0 -375px;
-      left: 50%;
-    }
-    body{
-      background-color: rgb(50, 0, 110);
-    }
-  </style>
+  <!--<script src="js/keys.js"></script>-->
 </head>
 <body>
+  <h1>Test Title!</h1>
   <canvas>
   </canvas>
-  <!--
-  <a href='/'></a>
-  <img src='/ghost' />
-  -->
+  
 </body>
 </html>
