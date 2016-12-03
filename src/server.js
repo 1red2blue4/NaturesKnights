@@ -16,7 +16,7 @@ const port = process.env.PORT || process.env.NODE_PORT || 3500;
 // (in this case the same folder as the server js file)
 
 //file names in the client folder
-const fileNames = ['/index.html', '/media/ghost.png', '/media/logo.png', '/media/dream_orphans/dreamorphans.ttf'];
+const fileNames = ['/index.html', '/media/ghost.png', '/media/logo.png', '/media/arrow.png', '/media/arrowSpritesheet.png', '/media/dream_orphans/dreamorphans.ttf'];
 
 const cachedFiles = {};
 
@@ -121,21 +121,15 @@ const onJoined = (sock) => {
   const yourTicketNum = count;
   users[yourTicketNum] = yourTicketNum;
   const roomNum = Math.floor((yourTicketNum + 1) / 2);
+  //socket.roomNum = roomNum;
+  console.dir(`Room num is ${socket.roomNum}`);
   console.dir(yourTicketNum);
   socket.join(`room${roomNum}`);
   if (!openRooms[roomNum]) {
     openRooms[roomNum] = roomNum;
   }
   
-  //console.dir(drawRect);
-  
   socket.emit('getTicketNum', { ticket: yourTicketNum, room: roomNum });
-  
-  //console.dir(drawRectS);
-  
-  /*
-  socket.emit('sendUtils', { drawRectWithStroke: drawRectWithStrokeS, drawRect: drawRectS, fillText: fillTextS, genDirection: genDirectionS, getRandomNum: getRandomNumS });
-  */
   
   
   socket.on("sendTeam", (data) => {
@@ -177,19 +171,30 @@ const onJoined = (sock) => {
     
   });
   
+  socket.on("firstTurn", (data) => {
+    socket.broadcast.to(`room${data.yourRoomNum}`).emit("nextTurn", { next: data.turnOrder[0], newTurnOrder: data.turnOrder });
+  });
+  
   socket.on("takeTurn", (data) => {
     
-    socket.emit("nextTurn", { next: data.turnOrder[0] });
+    const theTurnOrder = data.turnOrder;
+    theTurnOrder.push(theTurnOrder.shift());
+    socket.broadcast.to(`room${data.yourRoomNum}`).emit("nextTurnEnemy", { next: theTurnOrder[0], newTurnOrder: theTurnOrder });
+    socket.emit("nextTurn", { next: theTurnOrder[0], newTurnOrder: theTurnOrder });
     
   });
+  
+  return roomNum;
   
 };
 
 io.sockets.on('connection', (sock) => {
   console.log('started');
-  onJoined(sock);
+  const roomNum = onJoined(sock);
+  console.dir(`Room num is ${roomNum}`);
 
   sock.on('disconnect', () => {
+    sock.broadcast.to(`room${roomNum}`).emit("displayEnemyLeft");
     console.log('ended');
   });
 });

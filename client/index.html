@@ -29,17 +29,14 @@
   
     "use strict";
 
-    /*
-    let drawRectWithStroke = () => {};
+    var myKeys = {};
 
-    let drawRect = () => {};
-
-    let fillText = () => {};
-
-    let genDirection = () => {};
-
-    let getRandomNum = () => {};
-    */
+    // myKeys.keydown array to keep track of which keys are down
+    // this is called a "key daemon"
+    // main.js will "poll" this array every frame
+    // this works because JS has "sparse arrays" - not every language does
+    myKeys.keydown = [];
+    myKeys.keyup = [];
 
     let socket;
 
@@ -52,27 +49,46 @@
     let yourCharacters = {};
     let bothPlayersAvailable = false;
     let takingTurn = false;
+    let turnTaken = false;
+    let enemyLeft = false;
+    let stopBlinking = false;
+    let currKnightArrowPos = -1;
+    let currKnight = {};
+    currKnight.teamNum = -1;
 
+
+    //set button values
     let buttonWidth = 125;
     let buttonHeight = 75;
     let buttonPosY = 375;
 
-    let buttonPosX1Player2 = 20;
-    let buttonPosX2Player2 = 170;
-    let buttonPosX3Player2 = 320;
+    let buttonPosX1 = 20;
 
-    let buttonPosX1Player1 = 350;
-    let buttonPosX2Player1 = 500;
-    let buttonPosX3Player1 = 650;
+    let team1StartPos = 305;
+    let team2StartPos = 385;
 
-    let team2StartPos = 305;
-    let team1StartPos = 385;
+    let buttonColor = "rgb(240, 230, 80)";
+    let highlightButtonColor = "rgb(230, 210, 40)";
+    let currentButton = 0;
+    let bloatSize = 10;
+    let bloatSizeCap = 10;
+    let lineBloat = 4;
+    let maxLineBloat = 4;
 
-    let buttonColor = "rgb(240, 250, 80)";
+    //set outter box values
+    let outterBoxPosX = buttonPosX1 - bloatSize*3/2 - 3;
+    let outterBoxPosY = buttonPosY - bloatSize - 3;
+    let outterBoxWidth = buttonWidth + bloatSize*3 + 6;
+    let outterBoxHeight = buttonHeight + bloatSize*2 + 6;
 
+    //space between one team member position and the next
     let teamMemberIncrement = 75;
 
-    let ghostImg = new Image();
+    let frame = 0;
+
+    //let ghostImg = new Image();
+    let arrowImage = new Image();
+    let arrowSpritesheetImage = new Image();
 
     let draws = {};
 
@@ -96,8 +112,9 @@
       return myAttack;
     };
 
-    let CreateKnight = (hlth, def, spd, drftPts, cnKnckOvr, alv, psnd, brnd, flng, atcks) => {
+    let CreateKnight = (nm, hlth, def, spd, drftPts, cnKnckOvr, alv, psnd, brnd, flng, atcks) => {
       let myKnight = {};
+      myKnight.name = nm;
       myKnight.HLTH = hlth;
       myKnight.DEF = def;
       myKnight.speed = spd;
@@ -111,39 +128,86 @@
       return myKnight;
     };
 
-    let savageTiger = CreateKnight(5, 0, 13, 2, "false", "true", "false", "false", "false",
+    //setInputDaemon function taken directly from IGME-330
+    const setInputDaemon = () => {
+      myKeys.KEYBOARD = Object.freeze({
+        "KEY_ENTER": 13,
+        "KEY_LEFT": 37, 
+        "KEY_UP": 38, 
+        "KEY_RIGHT": 39, 
+        "KEY_DOWN": 40,
+        "KEY_SPACE": 32,
+        "KEY_SHIFT": 16,
+        "KEY_W": 87,
+        "KEY_A": 65,
+        "KEY_S": 83,
+        "KEY_D": 68,
+        "KEY_T": 84
+      });
+      
+      // event listeners
+      window.addEventListener("keydown",function(e){
+        myKeys.keydown[e.keyCode] = true;
+      });
+
+      window.addEventListener("keyup",function(e){
+        myKeys.keydown[e.keyCode] = false;
+        
+        myKeys.keyup[e.keyCode] = true;
+
+        // pausing and resuming
+        var char = String.fromCharCode(e.keyCode);
+        if (char == "p" || char == "P"){
+          if (app.main.paused){
+            app.main.resumeGame();
+          } else {
+            app.main.pauseGame();
+          }
+        }
+
+        if (char == "d" || char == "D")
+        {
+          app.main.toggleDebug();
+        }
+      });
+    };
+
+    let savageTiger = CreateKnight("Savage Tiger", 5, 0, 13, 2, false, true, false, false, false,
       [CreateAttack("Claw", 2, 0, "Claw the enemy apart.", 
-        CreateSpecialFeatures("false", "false", "false", "true", "false", "front")
+        CreateSpecialFeatures(false, false, false, true, false, "front")
       )]
     );
 
-    let chipmonk = CreateKnight(2, 0, 7, 1, "false", "true", "false", "false", "false",
+    let chipmonk = CreateKnight("Chipmonk", 2, 0, 7, 1, false, true, false, false, false,
       [CreateAttack("Bonk", 1, 0, "Bonks the enemy with your head.",
-        CreateSpecialFeatures("true", "false", "false", "false", "true", "any")
+        CreateSpecialFeatures(true, false, false, false, true, "any")
       )]
     );
 
-    let seaSerpent = CreateKnight(7, 0, 8, 3, "false", "true", "false", "false", "true",
+    let seaSerpent = CreateKnight("Sea Serpent", 7, 0, 8, 3, false, true, false, false, true,
       [CreateAttack("Wave Smash", 2, 0, "Smashes the enemy with a tidal wave.",
-        CreateSpecialFeatures("true", "false", "false", "false", "false", "front")
+        CreateSpecialFeatures(true, false, false, false, false, "front")
       ), CreateAttack("Sea Gust", 1, 1, "Sends a gust of wind at the enemies",
-        CreateSpecialFeatures("false", "false", "false", "true", "false", "all")
+        CreateSpecialFeatures(false, false, false, true, false, "all")
       )]
     );
 
-    let blossomBird = CreateKnight(7, 0, 12, 3, "false", "true", "false", "false", "true", 
+    let blossomBird = CreateKnight("Blossom Bird", 7, 0, 12, 3, false, true, false, false, true, 
       [CreateAttack("Dive", 3, 0, "Dive straight through an enemy.",
-        CreateSpecialFeatures("false", "false", "false", "false", "true", "any")
+        CreateSpecialFeatures(false, false, false, false, true, "any")
       )]
     );
 
+    let sponge = CreateKnight("Sponge", 10, 1, 4, 3, false, true, false, false, false,
+      [CreateAttack("Lunge", 1, 0, "Jump at the enemy.", 
+        CreateSpecialFeatures(false, false, false, false, false, "front")
+      )]
+    );
 
     /*
     let sillyDog = {};
 
     let schemingMonkey = {};
-
-    let sponge = {};
 
     let smallCrab = {};
 
@@ -176,9 +240,46 @@
     let witchBear = {};
     */
 
+    let allKnights = [chipmonk, savageTiger, seaSerpent, blossomBird, sponge];
+    //let takenMembers = {};
+
     let yourTeam = [savageTiger, chipmonk, savageTiger, seaSerpent, blossomBird];
     let enemyTeam = {};
     let turnOrder = {};
+
+    //calculateTeam() sets yourTeam, inputs number of members
+    //for now, always 5
+    const calculateTeam = (numMembers) => {
+      for (let i = 0; i < numMembers; i++)
+      {
+        yourTeam[i] = calculateTeamMember(i);
+      }
+    };
+
+    //calculateTeamMember() takes in number of previous members calculated and outputs a knight
+    const calculateTeamMember = (numPrevMembers) => {
+      
+      let takenMembers = [];
+      let count = 0;
+      
+      //set what members you have already taken
+      for (let i = 0; i < numPrevMembers; i++)
+      {
+        //takenMembers = [];
+        takenMembers[i] = yourTeam[i];
+      }
+      
+      //get a random element from the array of all knights
+      let knightSet = allKnights[Math.floor(Math.random()*allKnights.length)];
+      
+      //as long
+      while (takenMembers.includes(knightSet))
+      {
+        knightSet = allKnights[Math.floor(Math.random()*allKnights.length)];
+      }
+      
+      return knightSet;
+    };
 
     const draw = (myTeam, theirTeam) => {
 
@@ -186,90 +287,161 @@
 
       //you are red team
       if (yourTicketNum % 2 == 1) {
-        drawUI(myTeam, theirTeam, team1StartPos, team2StartPos, buttonPosX1Player1, buttonPosX2Player1, buttonPosX3Player1, "red", "blue", 1);
+        drawUI(myTeam, theirTeam, team1StartPos, team2StartPos, buttonPosX1, "red", "blue", 1);
       }
       else
       {
-        drawUI(myTeam, theirTeam, team1StartPos, team2StartPos, buttonPosX1Player2, buttonPosX2Player2, buttonPosX3Player2, "blue", "red", 2);
-      }     
-
+        drawUI(myTeam, theirTeam, team1StartPos, team2StartPos, buttonPosX1, "blue", "red", 2);
+      }
+      
+      directCurrKnight();
+      
 
     };
 
-    const drawUI = (myTeam, theirTeam, yourTeamStartPos, enemyTeamStartPos, buttonPosX1, buttonPosX2, buttonPosX3, yourColor, theirColor, playerNum) => {
+    const checkPlayerInput = () => {
+      //if the player hits enter, take their turn
+      if (takingTurn && myKeys.keyup[myKeys.KEYBOARD.KEY_ENTER])
+      {
+        useAttack(currKnight.attacks[0]);
+        turnTaken = true;
+        takingTurn = false;
+        console.dir(turnOrder);
+        myKeys.keyup[myKeys.KEYBOARD.KEY_ENTER] = false;
+        socket.emit("takeTurn", { turnOrder, yourRoomNum });
+      }
+      //move to the next button option
+      if (takingTurn && myKeys.keyup[myKeys.KEYBOARD.KEY_RIGHT])
+      {
+        //reset bloat
+        bloatSize = 0;
+        lineBloat = 0;
+        const numOptions = turnOrder[0].attacks.length;
+        currentButton++;
+        if (currentButton > numOptions - 1)
+        {
+          currentButton = 0;
+        }
+        myKeys.keyup[myKeys.KEYBOARD.KEY_RIGHT] = false;
+      }
+      //move to the previous button option
+      if (takingTurn && myKeys.keyup[myKeys.KEYBOARD.KEY_LEFT])
+      {
+        //reset bloat
+        bloatSize = 0;
+        lineBloat = 0;
+        const numOptions = turnOrder[0].attacks.length;
+        currentButton--;
+        if (currentButton < 0)
+        {
+          currentButton = numOptions - 1;
+        }
+        myKeys.keyup[myKeys.KEYBOARD.KEY_LEFT] = false;
+      }
+    };
+
+    //create useAttack() function
+    const useAttack = (myAttack) => {
+      
+    };
+
+    const directCurrKnight = () => {
+      
+      if (!takingTurn)
+      {
+        currKnightArrowPos = -100;
+      }
+      
+      if (takingTurn && !stopBlinking)
+      {        
+        for (let i = 0; i < yourTeam.length; i++)
+        {
+          if (currKnight.name === yourTeam[i].name)
+          {
+            currKnightArrowPos = team1StartPos - teamMemberIncrement*i;
+            currKnight.teamNum = i;
+            break;
+          }
+        }
+        stopBlinking = true;
+      }
+      
+      drawArrowOnKnight(currKnightArrowPos);
+    };
+
+    const drawArrowOnKnight = (posX) => {
+      ctx.drawImage(arrowSpritesheetImage, (frame % 24)*30, 0, 30, 30,  posX + 15, 200, 30, 30);
+      frame++;
+    };
+
+    /*
+    const increaseSize = (deltaSize, sizeCap) => {
+      const inc = deltaSize + 1;
+      if (inc <= sizeCap)
+      {
+        return inc;
+      }
+      else
+      {
+        return sizeCap;
+      }
+    };
+    */
+
+    const drawUI = (myTeam, theirTeam, yourTeamStartPos, enemyTeamStartPos, buttonPosX1, yourColor, theirColor, playerNum) => {
       
       //draw your team
       for (let i = 0; i < myTeam.length; i++)
       {
-        drawRect(yourTeamStartPos + teamMemberIncrement*i, 250, 60, 60, yourColor);
+        drawRect(yourTeamStartPos - teamMemberIncrement*i, 250, 60, 60, yourColor);
       }
       //draw your button options
       if (takingTurn)
       {
-        drawRect(buttonPosX1, buttonPosY, buttonWidth, buttonHeight, buttonColor);
-        fillText("Test Text", buttonPosX1 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
-        drawRect(buttonPosX2, buttonPosY, buttonWidth, buttonHeight, buttonColor);
-        fillText("Different Text", buttonPosX2 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
-        drawRect(buttonPosX3, buttonPosY, buttonWidth, buttonHeight, buttonColor);
-        fillText("Other Text", buttonPosX3 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+        //changeOptionsInput();
+        for (let i = 0; i < turnOrder[0].attacks.length; i++)
+        {
+          if (i === currentButton)
+          {
+            drawRectWithStroke(buttonPosX1 + 150*i - bloatSize*3/2, buttonPosY - bloatSize, buttonWidth + bloatSize*3, buttonHeight + bloatSize*2, highlightButtonColor, "rgb(70, 5, 60)", lineBloat);
+            
+            fillText(turnOrder[0].attacks[i].name, buttonPosX1 + buttonWidth/2 + 150*i, buttonPosY + buttonHeight/2, "14pt nature", "black", "center", "middle");
+            
+            //outter box
+            //drawRectWithStroke(outterBoxPosX + 150*i, outterBoxPosY, outterBoxWidth, outterBoxHeight, "purple", 3);
+          }
+          else
+          {
+            drawRect(buttonPosX1 + 150*i, buttonPosY, buttonWidth, buttonHeight, buttonColor);
+            
+            fillText(turnOrder[0].attacks[i].name, buttonPosX1 + buttonWidth/2 + 150*i, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+          }
+        }
+        //increase bloat size up to maximum
+        if (bloatSize < bloatSizeCap)
+        {
+          bloatSize++;
+        }
+        if (lineBloat < maxLineBloat)
+        {
+          lineBloat++;
+        }
       }
       //if other player is here, draw them
       if (bothPlayersAvailable)
       {
         for (let i = 0; i < theirTeam.length; i++)
         {
-          drawRect(enemyTeamStartPos - teamMemberIncrement*i, 250, 60, 60, theirColor);
+          drawRect(enemyTeamStartPos + teamMemberIncrement*i, 250, 60, 60, theirColor);
         }
+      }
+      if (enemyLeft === true)
+      {
+        fillText("The enemy player", WIDTH/2, 75, "18pt nature", "rgb(15, 15, 0)", "center", "middle");
+        fillText("has left the game!", WIDTH/2, 125, "18pt nature", "rgb(15, 15, 0)", "center", "middle");
       }
       
     };
-
-    /*
-    const drawUIPlayer1 = (myTeam, theirTeam) => {
-      for (let i = 0; i < myTeam.length; i++)
-      {
-        drawRect(team1StartPos + teamMemberIncrement*i, 250, 60, 60, "red");
-      }
-      if (takingTurn)
-      {
-        drawRect(buttonPosX1Player1, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
-        fillText("Test Text", buttonPosX1Player1 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
-        drawRect(buttonPosX2Player1, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
-        fillText("Different Text", buttonPosX2Player1 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
-        drawRect(buttonPosX3Player1, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
-        fillText("Other Text", buttonPosX3Player1 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
-      }
-      if (bothPlayersAvailable)
-      {
-        for (let i = 0; i < theirTeam.length; i++)
-        {
-          drawRect(305 - 75*i, 250, 60, 60, "blue");
-        }
-      }
-    };
-
-    const drawUIPlayer2 = (myTeam, theirTeam) => {
-      for (let i = 0; i < myTeam.length; i++)
-      {
-        drawRect(team2StartPos - teamMemberIncrement*i, 250, 60, 60, "blue");
-      }
-      if (takingTurn)
-      {
-        drawRect(buttonPosX1Player2, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
-        fillText("Test Text", buttonPosX1Player2 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
-        drawRect(buttonPosX2Player2, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
-        fillText("Different Text", buttonPosX2Player2 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
-        drawRect(buttonPosX3Player2, buttonPosY, buttonWidth, buttonHeight, "rgb(240, 250, 80)");
-        fillText("Other Text", buttonPosX3Player2 + buttonWidth/2, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
-      }
-      if (bothPlayersAvailable) {
-        for (let i = 0; i < theirTeam.length; i++)
-        {
-          drawRect(385 + 75*i, 250, 60, 60, "red");
-        }
-      }
-    };
-    */
 
     const setCalls = () => {
 
@@ -278,38 +450,16 @@
       socket.on('getTicketNum', (data) => {
         yourTicketNum = data.ticket;
         yourRoomNum = data.room;
-        //console.log("Great!");
         console.log(`Your ticket num is: ${yourTicketNum}`);
 
         fillText(ctx, `You are in room: ${yourRoomNum}`, WIDTH*5/6, HEIGHT/12, "12px nature", "purple");
         
-        /*
-        drawRectWithStroke = data.drawRectWithStroke;
-        drawRect = data.drawRect;
-        fillText = data.fillText;
-        genDirection = data.genDirection;
-        getRandomNum = data.getRandomNum;
-        console.log(data.drawRect);
-        */
-
-        ctx.drawImage(ghostImg, WIDTH/2 - 150, HEIGHT*3/4);
+        //ctx.drawImage(ghostImg, WIDTH/2 - 150, HEIGHT*3/4);
 
         socket.emit("sendTeam", {team: yourTeam, room: yourRoomNum, ticket: yourTicketNum});
 
         socket.emit("awaitBothPlayers", { ticket: yourTicketNum, room: yourRoomNum, ready: bothPlayersAvailable });
       });
-      
-      /*
-      socket.on("sendUtils", (data) => {
-        //console.log("Utilities sent!");
-        drawRectWithStroke = data.drawRectWithStroke;
-        drawRect = data.drawRect;
-        fillText = data.fillText;
-        genDirection = data.genDirection;
-        getRandomNum = data.getRandomNum;
-        //console.dir(drawRect);
-      });
-      */
 
       //once both players have arrived, start
       socket.on("stopWaiting", () => {
@@ -324,7 +474,7 @@
         //once the enemy team is received, set gameplay order
 
         //find out the order of play
-        const allCharactersBasedOnSpeed = [];
+        let allCharactersBasedOnSpeed = [];
 
         for (let i = 0; i < yourTeam.length; i++)
         {
@@ -343,48 +493,75 @@
         });
         allCharactersBasedOnSpeed.reverse();
 
-        //doctor who owns what character
+        
+        //doctor the ownership of one player so that it's the opposite
         if (yourTicketNum % 2 == 0)
         {
-          for (let i = 0; i < yourTeam.length + enemyTeam.length; i++)
-          {
-            if (allCharactersBasedOnSpeed[i].team === "me")
-            {
-              allCharactersBasedOnSpeed[i].team = "them";
-            }
-            else if (allCharactersBasedOnSpeed[i].team === "them")
-            {
-              allCharactersBasedOnSpeed[i].team = "me";
-            }
-          }
+          allCharactersBasedOnSpeed = doctorOwnership(allCharactersBasedOnSpeed);
         }
-
-        //console.dir(allCharactersBasedOnSpeed);
+        
 
         //save the turn order
         turnOrder = allCharactersBasedOnSpeed;
 
-        console.dir(turnOrder[0].team);
-
-        socket.emit("takeTurn", {turnOrder});
+        socket.emit("firstTurn", {turnOrder, yourRoomNum});
       });
 
       socket.on("nextTurn", (data) => {
-        console.dir(data.next);
-        if (data.next.team === "me")
+        
+        turnOrder = data.newTurnOrder;
+        if (turnOrder[0].team === "me")
         {
           takingTurn = true;
+          turnTaken = false;
+          stopBlinking = false;
         }
+        currKnight = data.next;
+      });
+      
+      socket.on("nextTurnEnemy", (data) => {
+        
+        
+        turnOrder = doctorOwnership(data.newTurnOrder);
+        console.dir(turnOrder);
+        if (turnOrder[0].team === "me")
+        {
+          takingTurn = true;
+          turnTaken = false;
+          stopBlinking = false;
+        }
+        currKnight = data.next;
+      });
+      
+      socket.on("displayEnemyLeft", () => {
+        enemyLeft = true;
       });
 
     };
+
+    const doctorOwnership = (fullTurnOrder) => {
+      //doctor who owns what character
+      for (let i = 0; i < yourTeam.length + enemyTeam.length; i++)
+      {
+        if (fullTurnOrder[i].team === "me")
+        {
+          fullTurnOrder[i].team = "them";
+        }
+        else if (fullTurnOrder[i].team === "them")
+        {
+          fullTurnOrder[i].team = "me";
+        }
+      }
+      return fullTurnOrder;
+    };
     
-    const drawRectWithStroke = (xPos, yPos, width, height, fillStyle, strokeStyle) => {
+    const drawRectWithStroke = (xPos, yPos, width, height, fillStyle, strokeStyle, lineWidth) => {
       ctx.save();
       ctx.fillStyle = fillStyle;
       ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = lineWidth;
       ctx.fillRect(xPos, yPos, width, height);
-      ctx.stroke();
+      ctx.strokeRect(xPos, yPos, width, height);
       ctx.restore();
     };
 
@@ -420,7 +597,12 @@
     const handleMessage = (data) => {
       draws[data.time] = data.coords;
       draw(data);
-    };    
+    };
+
+    const loadImages = () => {
+      arrowImage.src = '../media/arrow.png';
+      arrowSpritesheetImage.src = '../media/arrowSpritesheet.png';
+    };
 
     const init = () => {
       socket = io.connect();
@@ -428,7 +610,10 @@
       canvas.height = 500;
       WIDTH = canvas.width;
       HEIGHT = canvas.height;
-      ghostImg.src = '../media/ghost.png';
+      calculateTeam(5);
+      setInputDaemon();
+      loadImages();
+      //ghostImg.src = '../media/ghost.png';
       setCalls();
       //startFight();
       update();
@@ -437,6 +622,8 @@
     function update()
     {
       draw(yourTeam, enemyTeam);
+      checkPlayerInput();
+      console.log(takingTurn);
       window.requestAnimationFrame(update);
     }
 
