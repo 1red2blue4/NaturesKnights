@@ -7,6 +7,10 @@
       font-family: nature;
       src: url(media/dream_orphans/dreamorphans.ttf);
     }
+    @font-face{
+      font-family: roboto;
+      src: url(media/Roboto/Roboto-Black.ttf);
+    }
     canvas{
       background-color: rgb(90, 250, 90);
       font-family: nature;
@@ -52,6 +56,8 @@
     let turnTaken = false;
     let enemyLeft = false;
     let stopBlinking = false;
+    let showDealDamage = false;
+    let sendDamageInfo = {type: "hurt", number: 1}; 
     let currKnightArrowPos = -1;
     let currKnight = {};
     currKnight.teamNum = -1;
@@ -61,8 +67,13 @@
     let buttonWidth = 125;
     let buttonHeight = 75;
     let buttonPosY = 375;
-
     let buttonPosX1 = 20;
+
+    let descriptionBoxPosX = 475;
+    let descriptionBoxPosY = 350;
+    let descriptionBoxWidth = 300;
+    let descriptionBoxHeight = 200;
+    let descriptionBoxFill = "rgb(255, 255, 225)";
 
     let team1StartPos = 305;
     let team2StartPos = 385;
@@ -85,34 +96,41 @@
     let teamMemberIncrement = 75;
 
     let frame = 0;
+    let freezeFrame = 0;
+
+    let alphVal = 0;
 
     //let ghostImg = new Image();
     let arrowImage = new Image();
     let arrowSpritesheetImage = new Image();
+    let leftArrowImage = new Image();
+    let rightArrowImage = new Image();
 
     let draws = {};
 
-    let CreateSpecialFeatures = (kncksOvr, psns, brns, brksShld, htsFrmTp, trgts) => {
+    let CreateSpecialFeatures = (kncksOvr, psns, brns, brksShld, htsFrmTp, drct, trgts) => {
       let mySpecialFeatures = {};
       mySpecialFeatures.knocksOver = kncksOvr;
       mySpecialFeatures.burns = brns;
       mySpecialFeatures.poisons = psns;
       mySpecialFeatures.breaksShield = brksShld;
       mySpecialFeatures.targets = trgts;
-      mySpecialFeatures.hitsFromTop = htsFrmTp
+      mySpecialFeatures.hitsFromTop = htsFrmTp;
+      mySpecialFeatures.direct = drct;
+      return mySpecialFeatures;
     };
 
     let CreateAttack = (nm, dmg, mna, dscrptn, spclFtrs) => {
       let myAttack = {};
       myAttack.name = nm;
-      myAttack.damage = dmg;
+      myAttack.ATK = dmg;
       myAttack.mana = mna;
       myAttack.description = dscrptn;
       myAttack.specialFeatures = spclFtrs;
       return myAttack;
     };
 
-    let CreateKnight = (nm, hlth, def, spd, drftPts, cnKnckOvr, alv, psnd, brnd, flng, atcks) => {
+    let CreateKnight = (nm, hlth, def, spd, drftPts, cnKnckOvr, alv, psnd, brnd, flng, spkd, atcks) => {
       let myKnight = {};
       myKnight.name = nm;
       myKnight.HLTH = hlth;
@@ -124,6 +142,7 @@
       myKnight.poisoned = psnd;
       myKnight.burned = brnd;
       myKnight.flying = flng;
+      myKnight.spiked = spkd;
       myKnight.attacks = atcks;
       return myKnight;
     };
@@ -172,35 +191,35 @@
       });
     };
 
-    let savageTiger = CreateKnight("Savage Tiger", 5, 0, 13, 2, false, true, false, false, false,
+    let savageTiger = CreateKnight("Savage Tiger", 5, 0, 13, 2, false, true, false, false, false, false,
       [CreateAttack("Claw", 2, 0, "Claw the enemy apart.", 
         CreateSpecialFeatures(false, false, false, true, false, "front")
       )]
     );
 
-    let chipmonk = CreateKnight("Chipmonk", 2, 0, 7, 1, false, true, false, false, false,
+    let chipmonk = CreateKnight("Chipmonk", 2, 0, 7, 1, false, true, false, false, false, false,
       [CreateAttack("Bonk", 1, 0, "Bonks the enemy with your head.",
-        CreateSpecialFeatures(true, false, false, false, true, "any")
+        CreateSpecialFeatures(true, false, false, false, true, true, "any")
       )]
     );
 
-    let seaSerpent = CreateKnight("Sea Serpent", 7, 0, 8, 3, false, true, false, false, true,
+    let seaSerpent = CreateKnight("Sea Serpent", 7, 0, 8, 3, false, true, false, false, true, false,
       [CreateAttack("Wave Smash", 2, 0, "Smashes the enemy with a tidal wave.",
-        CreateSpecialFeatures(true, false, false, false, false, "front")
+        CreateSpecialFeatures(true, false, false, false, false, false, "front")
       ), CreateAttack("Sea Gust", 1, 1, "Sends a gust of wind at the enemies",
-        CreateSpecialFeatures(false, false, false, true, false, "all")
+        CreateSpecialFeatures(false, false, false, true, false, false, "all")
       )]
     );
 
-    let blossomBird = CreateKnight("Blossom Bird", 7, 0, 12, 3, false, true, false, false, true, 
+    let blossomBird = CreateKnight("Blossom Bird", 7, 0, 12, 3, false, true, false, false, true, false,
       [CreateAttack("Dive", 3, 0, "Dive straight through an enemy.",
-        CreateSpecialFeatures(false, false, false, false, true, "any")
+        CreateSpecialFeatures(false, false, false, false, true, true, "any")
       )]
     );
 
-    let sponge = CreateKnight("Sponge", 10, 1, 4, 3, false, true, false, false, false,
+    let sponge = CreateKnight("Sponge", 10, 1, 4, 3, false, true, false, false, false, false,
       [CreateAttack("Lunge", 1, 0, "Jump at the enemy.", 
-        CreateSpecialFeatures(false, false, false, false, false, "front")
+        CreateSpecialFeatures(false, false, false, false, false, true, "front")
       )]
     );
 
@@ -294,8 +313,8 @@
         drawUI(myTeam, theirTeam, team1StartPos, team2StartPos, buttonPosX1, "blue", "red", 2);
       }
       
-      directCurrKnight();
-      
+      frame++;
+      console.log(`Show deal damage: ${showDealDamage}`);
 
     };
 
@@ -304,6 +323,7 @@
       if (takingTurn && myKeys.keyup[myKeys.KEYBOARD.KEY_ENTER])
       {
         useAttack(currKnight.attacks[0]);
+        currentButton = 0;
         turnTaken = true;
         takingTurn = false;
         console.dir(turnOrder);
@@ -342,7 +362,42 @@
 
     //create useAttack() function
     const useAttack = (myAttack) => {
+      //ATK
+      //mana
+      //specialFeatures.knocksOver
+      //specialFeatures.burns
+      //specialFeatures.poisons
+      //specialFeatures.breaksShield
+      //specialFeatures.hitsFromTop
+      //specialFeatures.direct
+      showDealDamage = true;
+      sendDamageInfo.type = "hurt";
+      sendDamageInfo.number = myAttack.ATK;
+      freezeFrame = frame;
+      //alphVal = 1;
+    };
+
+    const drawBubbleDamage = (healHurt, number, pos, time) => {
+      //let timeLapse = frame - freezeFrame;
+      let timeToWait = time - freezeFrame;
+      let distToEnd = time - frame;
+      if (distToEnd < 0)
+      {
+        distToEnd = 0;
+      }
+      let color = "black";
+      alphVal = (distToEnd)/(timeToWait);
       
+      if (healHurt === "hurt")
+      {
+        color = `rgba(255, 0, 0, ${alphVal})`;
+      }
+      else if (healHurt === "heal")
+      {
+        color = `rgba(0, 0, 255, ${alphVal} )`;
+      }
+      fillText(number, 40 + 75*pos, 180 + 50*alphVal, "22pt roboto", color, "center", "middle");
+      //fillText(`${distToEnd} / ${timeToWait}`, 150, 150, "20pt nature", "rgb(100, 100, 100)", "center", "middle");
     };
 
     const directCurrKnight = () => {
@@ -371,22 +426,7 @@
 
     const drawArrowOnKnight = (posX) => {
       ctx.drawImage(arrowSpritesheetImage, (frame % 24)*30, 0, 30, 30,  posX + 15, 200, 30, 30);
-      frame++;
     };
-
-    /*
-    const increaseSize = (deltaSize, sizeCap) => {
-      const inc = deltaSize + 1;
-      if (inc <= sizeCap)
-      {
-        return inc;
-      }
-      else
-      {
-        return sizeCap;
-      }
-    };
-    */
 
     const drawUI = (myTeam, theirTeam, yourTeamStartPos, enemyTeamStartPos, buttonPosX1, yourColor, theirColor, playerNum) => {
       
@@ -398,18 +438,17 @@
       //draw your button options
       if (takingTurn)
       {
-        //changeOptionsInput();
+        //based upon the number of buttons, draw that button
         for (let i = 0; i < turnOrder[0].attacks.length; i++)
         {
+          //highlight current button
           if (i === currentButton)
           {
             drawRectWithStroke(buttonPosX1 + 150*i - bloatSize*3/2, buttonPosY - bloatSize, buttonWidth + bloatSize*3, buttonHeight + bloatSize*2, highlightButtonColor, "rgb(70, 5, 60)", lineBloat);
             
             fillText(turnOrder[0].attacks[i].name, buttonPosX1 + buttonWidth/2 + 150*i, buttonPosY + buttonHeight/2, "14pt nature", "black", "center", "middle");
-            
-            //outter box
-            //drawRectWithStroke(outterBoxPosX + 150*i, outterBoxPosY, outterBoxWidth, outterBoxHeight, "purple", 3);
           }
+          //draw all other buttons ordinarily
           else
           {
             drawRect(buttonPosX1 + 150*i, buttonPosY, buttonWidth, buttonHeight, buttonColor);
@@ -417,6 +456,13 @@
             fillText(turnOrder[0].attacks[i].name, buttonPosX1 + buttonWidth/2 + 150*i, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
           }
         }
+        //write out description
+        //make a box
+        drawRectWithStroke(descriptionBoxPosX, descriptionBoxPosY, descriptionBoxWidth, descriptionBoxHeight, descriptionBoxFill, "rgb(70, 5, 60)", 4);
+        
+        //show description  
+        fillText(turnOrder[0].attacks[currentButton].description, (descriptionBoxPosX + WIDTH)/2, (descriptionBoxPosY + HEIGHT)/2, "12pt nature", "black", "center", "middle");
+        
         //increase bloat size up to maximum
         if (bloatSize < bloatSizeCap)
         {
@@ -427,6 +473,40 @@
           lineBloat++;
         }
       }
+      //if it's not your turn....
+      else if (!takingTurn && bothPlayersAvailable && !enemyLeft)
+      {
+        //say you are awaiting the enemy's turn
+        if (frame % 100 < 33)
+        {
+          fillText("Awaiting enemy turn..", WIDTH/2 - 100, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
+        }
+        else if (frame % 100 < 66)
+        {
+          fillText("Awaiting enemy turn...", WIDTH/2 - 100, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
+        }
+        else
+        {
+          fillText("Awaiting enemy turn....", WIDTH/2 - 100, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
+        }
+      }
+      //show controls
+      fillText("Use Attack: ENTER", 10, 10, "14pt nature", "black", "left", "top");
+      fillText("Select Attack:", 9, 35, "14pt nature", "black", "left", "top");
+      ctx.drawImage(leftArrowImage, 115, 35, 20, 20);
+      ctx.drawImage(rightArrowImage, 140, 35, 20, 20);
+      
+      //if you deal damage...
+      if (showDealDamage)
+      {
+        //freezeFrame = frame;
+        drawBubbleDamage(sendDamageInfo.type, sendDamageInfo.number, 5, freezeFrame + 180);
+      }
+      if (alphVal === 0)
+      {
+        showDealDamage = false;
+      }
+      
       //if other player is here, draw them
       if (bothPlayersAvailable)
       {
@@ -440,6 +520,8 @@
         fillText("The enemy player", WIDTH/2, 75, "18pt nature", "rgb(15, 15, 0)", "center", "middle");
         fillText("has left the game!", WIDTH/2, 125, "18pt nature", "rgb(15, 15, 0)", "center", "middle");
       }
+        
+      directCurrKnight();
       
     };
 
@@ -583,6 +665,18 @@
       ctx.restore();
     };
 
+    /*
+    const fillTextWithAlpha = (string, x, y, css, color, textAlign, textBaseline) => {
+      ctx.save();
+      ctx.font = css;
+      ctx.textAlign = textAlign;
+      ctx.textBaseline = textBaseline;
+      ctx.fillStyle = color;
+      ctx.fillText(string, x, y);
+      ctx.restore();
+    };
+    */
+
     const genDirection = () => {
       let x = Math.floor((Math.random() * 10) - 5);
       let y = Math.floor((Math.random() * 10) - 5);
@@ -602,6 +696,8 @@
     const loadImages = () => {
       arrowImage.src = '../media/arrow.png';
       arrowSpritesheetImage.src = '../media/arrowSpritesheet.png';
+      leftArrowImage.src = '../media/arrowLeft.png';
+      rightArrowImage.src = '../media/arrowRight.png';
     };
 
     const init = () => {
