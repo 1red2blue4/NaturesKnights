@@ -16,7 +16,7 @@ const port = process.env.PORT || process.env.NODE_PORT || 3500;
 // (in this case the same folder as the server js file)
 
 //file names in the client folder
-const fileNames = ['/index.html', '/media/ghost.png', '/media/logo.png', '/media/arrow.png', '/media/arrowSpritesheet.png', '/media/arrowLeft.png', '/media/arrowRight.png', '/media/dream_orphans/dreamorphans.ttf', '/media/Roboto/Roboto-Black.ttf'];
+const fileNames = ['/index.html', '/media/ghost.png', '/media/logo.png', '/media/arrow.png', '/media/arrowSpritesheet.png', '/media/arrowLeft.png', '/media/arrowRight.png', '/media/dream_orphans/dreamorphans.ttf', '/media/Roboto/Roboto-Black.ttf', '/media/blossom_bird.png', '/media/sea_serpent.png', '/media/sponge.png', '/media/stupid_snake.png', '/media/monkey.png', '/media/redRect.png', '/media/naturesKnightsbg.png'];
 
 const cachedFiles = {};
 
@@ -182,6 +182,16 @@ const onJoined = (sock) => {
     socket.broadcast.to(`room${data.yourRoomNum}`).emit("nextTurnEnemy", { next: theTurnOrder[0], newTurnOrder: theTurnOrder });
     socket.emit("nextTurn", { next: theTurnOrder[0], newTurnOrder: theTurnOrder });
     
+  });
+  
+  socket.on("sendDamageUI", (data) => {
+    
+    socket.broadcast.to(`room${data.yourRoomNum}`).emit("receiveDamageUI", { damType: data.damType, damNum: data.damNum, targetNum: data.targetNum, targetType: data.targetType });
+  });
+  
+  socket.on("sendAbilityUI", (data) => {
+    
+    socket.broadcast.to(`room${data.yourRoomNum}`).emit("receiveAbilityUI", { abilityType: data.abilityType, abilityNum: data.abilityNum, targetNum: data.targetNum, targetType: data.targetType });
   });
   
   return roomNum;

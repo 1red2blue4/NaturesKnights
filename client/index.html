@@ -48,6 +48,8 @@
     let ctx = canvas.getContext("2d");
     let WIDTH;
     let HEIGHT;
+    let buffer = document.createElement("canvas");
+    let btx = buffer.getContext("2d");
     let yourTicketNum;
     let yourRoomNum;
     let yourCharacters = {};
@@ -56,8 +58,7 @@
     let turnTaken = false;
     let enemyLeft = false;
     let stopBlinking = false;
-    let showDealDamage = false;
-    let sendDamageInfo = {type: "hurt", number: 1}; 
+    
     let currKnightArrowPos = -1;
     let currKnight = {};
     currKnight.teamNum = -1;
@@ -95,27 +96,62 @@
     //space between one team member position and the next
     let teamMemberIncrement = 75;
 
+    let targetKnight = 0;
+    let targettedKnight = 0;
+    let sendDamageInfo = {type: "hurt", number: 1}; 
+    let receiveDamageInfo = {type: "hurt", number: 1};
+    let showDealDamage = false;
+    let showTakeDamage = false;
     let frame = 0;
-    let freezeFrame = 0;
+    let freezeFrameSend = 0;
+    let freezeFrameReceive = 0;
+    let alphValSend = 0;
+    let alphValReceive = 0;
+    let sendHittingAll = false;
+    let receiveHittingAll = false;
 
-    let alphVal = 0;
+    let showTargetBox = false;
+    let targetBoxNum = 0;
+
+    let showAssistBox = false;
+    let showHealSend = false;
+    let showHealReceive = false;
+    //let showReceiveAssistBox = false;
 
     //let ghostImg = new Image();
+    let backgroundImage = new Image();
     let arrowImage = new Image();
     let arrowSpritesheetImage = new Image();
     let leftArrowImage = new Image();
     let rightArrowImage = new Image();
+    let knightImages = {
+      monkey: new Image(),
+      blossomBird: new Image(),
+      sponge: new Image(),
+      stupidSnake: new Image(),
+      seaSerpent: new Image(),
+      redRect: new Image(),
+      savageTiger: new Image(),
+      stupidSnake: new Image(),
+      chipmonk: new Image(),
+    };
+    let monkeyImage = new Image();
+    let blossomBirdImage = new Image();
+    let spongeImage = new Image();
+    let stupidSnakeImage = new Image();
+    let seaSerpentImage = new Image();
+    let redRectImage = new Image();
 
     let draws = {};
 
-    let CreateSpecialFeatures = (kncksOvr, psns, brns, brksShld, htsFrmTp, drct, trgts) => {
+    let CreateSpecialFeatures = (kncksOvr, psns, brns, brksShld, htsFlng, drct, trgts) => {
       let mySpecialFeatures = {};
       mySpecialFeatures.knocksOver = kncksOvr;
       mySpecialFeatures.burns = brns;
       mySpecialFeatures.poisons = psns;
       mySpecialFeatures.breaksShield = brksShld;
       mySpecialFeatures.targets = trgts;
-      mySpecialFeatures.hitsFromTop = htsFrmTp;
+      mySpecialFeatures.hitsFlying = htsFlng;
       mySpecialFeatures.direct = drct;
       return mySpecialFeatures;
     };
@@ -130,9 +166,10 @@
       return myAttack;
     };
 
-    let CreateKnight = (nm, hlth, def, spd, drftPts, cnKnckOvr, alv, psnd, brnd, flng, spkd, atcks) => {
+    let CreateKnight = (nm, hlth, def, spd, drftPts, cnKnckOvr, alv, psnd, brnd, flng, spkd, atcks, img, strngNm) => {
       let myKnight = {};
       myKnight.name = nm;
+      myKnight.stringName = strngNm;
       myKnight.HLTH = hlth;
       myKnight.DEF = def;
       myKnight.speed = spd;
@@ -144,6 +181,9 @@
       myKnight.flying = flng;
       myKnight.spiked = spkd;
       myKnight.attacks = atcks;
+      myKnight.image = img;
+      myKnight.shaking = false;
+      //myKnight.image[myKnight.name]
       return myKnight;
     };
 
@@ -193,14 +233,18 @@
 
     let savageTiger = CreateKnight("Savage Tiger", 5, 0, 13, 2, false, true, false, false, false, false,
       [CreateAttack("Claw", 2, 0, "Claw the enemy apart.", 
-        CreateSpecialFeatures(false, false, false, true, false, "front")
-      )]
+        CreateSpecialFeatures(false, false, false, true, false, true, "front")
+      )],
+      redRectImage,
+      "redRect"
     );
 
     let chipmonk = CreateKnight("Chipmonk", 2, 0, 7, 1, false, true, false, false, false, false,
       [CreateAttack("Bonk", 1, 0, "Bonks the enemy with your head.",
         CreateSpecialFeatures(true, false, false, false, true, true, "any")
-      )]
+      )],
+      redRectImage,
+      "redRect"
     );
 
     let seaSerpent = CreateKnight("Sea Serpent", 7, 0, 8, 3, false, true, false, false, true, false,
@@ -208,19 +252,28 @@
         CreateSpecialFeatures(true, false, false, false, false, false, "front")
       ), CreateAttack("Sea Gust", 1, 1, "Sends a gust of wind at the enemies",
         CreateSpecialFeatures(false, false, false, true, false, false, "all")
-      )]
+      )],
+      seaSerpentImage,
+      "seaSerpent"
     );
 
     let blossomBird = CreateKnight("Blossom Bird", 7, 0, 12, 3, false, true, false, false, true, false,
       [CreateAttack("Dive", 3, 0, "Dive straight through an enemy.",
         CreateSpecialFeatures(false, false, false, false, true, true, "any")
-      )]
+      ),
+      CreateAttack("Blossom", 3, 2, "Heal a character 3 health.", 
+        CreateSpecialFeatures(false, false, false, false, false, false, "healAny")
+      )],
+      blossomBirdImage,
+      "blossomBird"
     );
 
     let sponge = CreateKnight("Sponge", 10, 1, 4, 3, false, true, false, false, false, false,
       [CreateAttack("Lunge", 1, 0, "Jump at the enemy.", 
-        CreateSpecialFeatures(false, false, false, false, false, true, "front")
-      )]
+        CreateSpecialFeatures(false, false, false, false, false, true, "any")
+      )],
+      spongeImage,
+      "sponge"
     );
 
     /*
@@ -303,7 +356,9 @@
     const draw = (myTeam, theirTeam) => {
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
+      
+      ctx.drawImage(backgroundImage, 0, 0);
+      
       //you are red team
       if (yourTicketNum % 2 == 1) {
         drawUI(myTeam, theirTeam, team1StartPos, team2StartPos, buttonPosX1, "red", "blue", 1);
@@ -314,54 +369,130 @@
       }
       
       frame++;
-      console.log(`Show deal damage: ${showDealDamage}`);
-
+      console.log(`Target Knight: ${targetKnight}`);
+      //console.log(`Targetted Knight: ${targettedKnight}`)
     };
 
     const checkPlayerInput = () => {
       //if the player hits enter, take their turn
       if (takingTurn && myKeys.keyup[myKeys.KEYBOARD.KEY_ENTER])
       {
-        useAttack(currKnight.attacks[0]);
-        currentButton = 0;
-        turnTaken = true;
-        takingTurn = false;
-        console.dir(turnOrder);
+        const getAttackType = lookForAttType(currKnight.attacks[currentButton]);
+        if (getAttackType === "attackAll")
+        {
+          sendHittingAll = true;
+          receiveHittingAll = false;
+          for (let i = 0; i < enemyTeam.length; i++)
+          {
+            targetKnight = i + 5;
+            useAttack(currKnight.attacks[currentButton], getAttackType);
+          }
+          currentButton = 0;
+        }
+        else if (!showTargetBox && !showAssistBox)
+        {
+          //showTargetBox = false;
+          
+          //targetKnight = targetBoxNum + 5;
+          useAttack(currKnight.attacks[currentButton], getAttackType);
+        }
+        
         myKeys.keyup[myKeys.KEYBOARD.KEY_ENTER] = false;
-        socket.emit("takeTurn", { turnOrder, yourRoomNum });
+      }
+      //if you press shift, select enemy
+      if (takingTurn && myKeys.keyup[myKeys.KEYBOARD.KEY_SHIFT])
+      {
+        const getAttackType = "selectTarget";
+        if (showAssistBox)
+        {
+          showAssistBox = false;
+          targetKnight = targetBoxNum;
+          useAssistAbility(currKnight.attacks[currentButton], getAttackType);
+        }
+        else if (showTargetBox)
+        {
+          showTargetBox = false;
+          targetKnight = targetBoxNum + 5;
+          useAttack(currKnight.attacks[currentButton], getAttackType);
+        }
+        
+        myKeys.keyup[myKeys.KEYBOARD.KEY_SHIFT] = false;
       }
       //move to the next button option
       if (takingTurn && myKeys.keyup[myKeys.KEYBOARD.KEY_RIGHT])
       {
-        //reset bloat
-        bloatSize = 0;
-        lineBloat = 0;
-        const numOptions = turnOrder[0].attacks.length;
-        currentButton++;
-        if (currentButton > numOptions - 1)
+        if (!showTargetBox && !showAssistBox)
         {
-          currentButton = 0;
+          //reset bloat
+          bloatSize = 0;
+          lineBloat = 0;
+          const numOptions = turnOrder[0].attacks.length;
+          currentButton++;
+          if (currentButton > numOptions - 1)
+          {
+            currentButton = 0;
+          }
+        }
+        else if (showTargetBox)
+        {
+          const targetOptions = enemyTeam.length;
+          targetBoxNum++;
+          if (targetBoxNum > targetOptions - 1)
+          {
+            targetBoxNum = 0;
+          }
+        }
+        else
+        {
+          const targetOptions = yourTeam.length;
+          targetBoxNum--;
+          if (targetBoxNum < 0)
+          {
+            targetBoxNum = targetOptions - 1;
+          }
         }
         myKeys.keyup[myKeys.KEYBOARD.KEY_RIGHT] = false;
       }
       //move to the previous button option
       if (takingTurn && myKeys.keyup[myKeys.KEYBOARD.KEY_LEFT])
       {
-        //reset bloat
-        bloatSize = 0;
-        lineBloat = 0;
-        const numOptions = turnOrder[0].attacks.length;
-        currentButton--;
-        if (currentButton < 0)
+        if (!showTargetBox && !showAssistBox)
         {
-          currentButton = numOptions - 1;
+          //reset bloat
+          bloatSize = 0;
+          lineBloat = 0;
+          const numOptions = turnOrder[0].attacks.length;
+          currentButton--;
+          if (currentButton < 0)
+          {
+            currentButton = numOptions - 1;
+          }
         }
+        else if (showTargetBox)
+        {
+          const targetOptions = enemyTeam.length;
+          targetBoxNum--;
+          if (targetBoxNum > targetOptions - 1)
+          {
+            targetBoxNum = 0;
+          }
+        }
+        else
+        {
+          const targetOptions = yourTeam.length;
+          targetBoxNum++;
+          if (targetBoxNum > targetOptions - 1)
+          {
+            targetBoxNum = 0;
+          }
+        }
+        
         myKeys.keyup[myKeys.KEYBOARD.KEY_LEFT] = false;
       }
     };
 
     //create useAttack() function
-    const useAttack = (myAttack) => {
+    const useAttack = (myAttack, targetType) => {
       //ATK
       //mana
       //specialFeatures.knocksOver
@@ -370,15 +501,87 @@
       //specialFeatures.breaksShield
       //specialFeatures.hitsFromTop
       //specialFeatures.direct
+      //console.dir(myAttack.specialFeatures.targets);
       showDealDamage = true;
+      showTakeDamage = false;
       sendDamageInfo.type = "hurt";
       sendDamageInfo.number = myAttack.ATK;
-      freezeFrame = frame;
-      //alphVal = 1;
+      console.log(`Damage: ${myAttack.ATK}`);
+      console.dir('myAttack');
+      freezeFrameSend = frame;
+      showTargetBox = false;
+      turnTaken = true;
+      takingTurn = false;
+      enemyTeam[targetKnight-5].shaking = true;
+      for (let i = 0; i < yourTeam.length; i++)
+      {
+        yourTeam[i].shaking = false;
+      }
+      //myKeys.keyup[myKeys.KEYBOARD.KEY_ENTER] = false;
+      socket.emit("sendDamageUI", {damType: sendDamageInfo.type, damNum: sendDamageInfo.number, yourRoomNum, targetNum: targetKnight - 5, targetType });
+      ////update damage here
+      ///then
+      //socket.emit("attack", {damType: sendDamageInfo.type, damNum: sendDamageInfo.number, yourRoomNum, specialFeats: currKnight.attacks[currentButton].specialFeatures });
+      if (targetType != "attackAll")
+      {
+        currentButton = 0;
+      }
+      socket.emit("takeTurn", { turnOrder, yourRoomNum });
     };
 
-    const drawBubbleDamage = (healHurt, number, pos, time) => {
-      //let timeLapse = frame - freezeFrame;
+    const useAssistAbility = (myAbility, targetType) => {
+      
+      showHealSend = true;
+      showHealReceive = false;
+      sendDamageInfo.type = "heal";
+      sendDamageInfo.number = myAbility.ATK;
+      freezeFrameSend = frame;
+      showAssistBox = false;
+      turnTaken = true;
+      takingTurn = false;
+      for (let i = 0; i < yourTeam.length; i++)
+      {
+        yourTeam[i].shaking = false;
+      }
+      
+      socket.emit("sendAbilityUI", {abilityType: sendDamageInfo.type, abilityNum: sendDamageInfo.number, yourRoomNum, targetNum: targetKnight, targetType });
+      socket.emit("takeTurn", {turnOrder, yourRoomNum});
+    };
+
+    const lookForAttType = (myAttack) => {
+      //healHurt = "hurt";
+      if (myAttack.specialFeatures.targets === "front")
+      {
+        targetKnight = 5;
+      }
+      else if (myAttack.specialFeatures.targets === "any")
+      {
+        //targetKnight = 5;
+        showTargetBox = true;
+        //targetKnight = selectEnemyTarget();
+      }
+      else if (myAttack.specialFeatures.targets === "all")
+      {
+        return "attackAll";
+      }
+      else if (myAttack.specialFeatures.targets === "healAny")
+      {
+        //healHurt = "heal";
+        showAssistBox = true;
+      }
+      else
+      {
+        targetKnight = 5; 
+      }
+      
+      return "unimportant";
+    };
+
+    const selectEnemyTarget = () => {
+      
+    };
+
+    const drawBubbleDamage = (healHurt, number, pos, time, freezeFrame) => {
       let timeToWait = time - freezeFrame;
       let distToEnd = time - frame;
       if (distToEnd < 0)
@@ -386,18 +589,60 @@
         distToEnd = 0;
       }
       let color = "black";
-      alphVal = (distToEnd)/(timeToWait);
+      let myAlphVal = (distToEnd)/(timeToWait);
       
       if (healHurt === "hurt")
       {
-        color = `rgba(255, 0, 0, ${alphVal})`;
+        color = `rgba(255, 0, 0, ${myAlphVal})`;
       }
       else if (healHurt === "heal")
       {
-        color = `rgba(0, 0, 255, ${alphVal} )`;
+        color = `rgba(0, 0, 255, ${myAlphVal} )`;
       }
-      fillText(number, 40 + 75*pos, 180 + 50*alphVal, "22pt roboto", color, "center", "middle");
+      fillText(number, 40 + 75*pos, 180 + 50*alphValSend, "22pt roboto", color, "center", "middle");
       //fillText(`${distToEnd} / ${timeToWait}`, 150, 150, "20pt nature", "rgb(100, 100, 100)", "center", "middle");
+      return myAlphVal;
+    };
+
+    const shakeCharacter = (healHurt, number, pos, time, freezeFrame) => {
+      let timeToWait = time - freezeFrame;
+      let distToEnd = time - frame;
+      if (distToEnd < 0)
+      {
+        distToEnd = 0;
+      }
+      let color = "black";
+      
+      let myAlphVal = (distToEnd)/(timeToWait);
+      let vector = {
+        x: 0,
+        y: 0
+      }
+      
+      if (myAlphVal < 0.25)
+      {
+        vector.x = 0;
+        vector.y = 0;
+        return vector;
+      }
+      else if (myAlphVal < 0.5)
+      {
+        vector.x = 5;
+        vector.y = 5;
+        return vector;
+      }
+      else if (myAlphVal < 0.75)
+      {
+        vector.x = 5;
+        vector.y = -5;
+        return vector;
+      }
+      else
+      {
+        vector.x = -5;
+        vector.y = -5;
+        return vector;
+      }
     };
 
     const directCurrKnight = () => {
@@ -430,10 +675,47 @@
 
     const drawUI = (myTeam, theirTeam, yourTeamStartPos, enemyTeamStartPos, buttonPosX1, yourColor, theirColor, playerNum) => {
       
+      //draw red tint around your team
+      drawTint(0, 0, WIDTH/2, HEIGHT, "rgba(255, 0, 0, 0.35)");
       //draw your team
       for (let i = 0; i < myTeam.length; i++)
       {
-        drawRect(yourTeamStartPos - teamMemberIncrement*i, 250, 60, 60, yourColor);
+        //alphValReceive = drawBubbleDamage(receiveDamageInfo.type, receiveDamageInfo.number, targettedKnight, freezeFrameReceive + 180, freezeFrameReceive);
+        if (myTeam[i].shaking)
+        {
+          const vector = shakeCharacter(receiveDamageInfo.type, receiveDamageInfo.number, targettedKnight, freezeFrameReceive + 40, freezeFrameReceive);
+          ctx.drawImage(myTeam[i].image, 0, 0, 300, 300, yourTeamStartPos - teamMemberIncrement*i + vector.x, 250 + vector.y, 75, 75);
+        }
+        else
+        {
+          ctx.drawImage(myTeam[i].image, 0, 0, 300, 300, yourTeamStartPos - teamMemberIncrement*i, 250, 75, 75);
+        }
+        
+        
+        //drawRect(yourTeamStartPos - teamMemberIncrement*i, 250, 60, 60, yourColor);
+      }
+      //if other player is here, draw them
+      if (bothPlayersAvailable)
+      {
+        //draw blue tint around enemy team
+        drawTint(WIDTH/2, 0, WIDTH/2, HEIGHT, "rgba(0, 0, 255, 0.15)");
+        //draw enemy team
+        for (let i = 0; i < theirTeam.length; i++)
+        {
+          if (theirTeam[i].shaking)
+          {
+            const vector = shakeCharacter(sendDamageInfo.type, sendDamageInfo.number, targettedKnight, freezeFrameSend + 40, freezeFrameSend);
+            ctx.drawImage(knightImages[theirTeam[i].stringName], 0, 0, 300, 300, enemyTeamStartPos + teamMemberIncrement*i + vector.x, 250 + vector.y, 75, 75);
+          }
+          else
+          {
+            ctx.drawImage(knightImages[theirTeam[i].stringName], 0, 0, 300, 300, enemyTeamStartPos + teamMemberIncrement*i, 250, 75, 75);
+          }
+          
+          
+          //ctx.drawImage(theirTeam[i].image, 0, 0, 300, 300, enemyTeamStartPos + teamMemberIncrement*i, 250, 75, 75);
+          //drawRect(enemyTeamStartPos + teamMemberIncrement*i, 250, 60, 60, theirColor);
+        }
       }
       //draw your button options
       if (takingTurn)
@@ -442,7 +724,7 @@
         for (let i = 0; i < turnOrder[0].attacks.length; i++)
         {
           //highlight current button
-          if (i === currentButton)
+          if (i === currentButton && !showTargetBox)
           {
             drawRectWithStroke(buttonPosX1 + 150*i - bloatSize*3/2, buttonPosY - bloatSize, buttonWidth + bloatSize*3, buttonHeight + bloatSize*2, highlightButtonColor, "rgb(70, 5, 60)", lineBloat);
             
@@ -454,6 +736,30 @@
             drawRect(buttonPosX1 + 150*i, buttonPosY, buttonWidth, buttonHeight, buttonColor);
             
             fillText(turnOrder[0].attacks[i].name, buttonPosX1 + buttonWidth/2 + 150*i, buttonPosY + buttonHeight/2, "12pt nature", "black", "center", "middle");
+          }
+        }
+        //encircle the enemy you wish to select
+        if (showTargetBox)
+        {
+          //based on the number of enemies, create a box choice for it
+          for (let i = 0; i < enemyTeam.length; i++)
+          {
+            if (i === targetBoxNum)
+            {
+              drawRectOnlyStroke(enemyTeamStartPos + teamMemberIncrement*i - 3, 247, 66, 66, "rgb(70, 5, 60)", 5);
+            }
+          }
+        }
+        //encircle the ally you wish to select
+        if (showAssistBox)
+        {
+          //based on the number of enemies, create a box choice for it
+          for (let i = 0; i < yourTeam.length; i++)
+          {
+            if (i === targetBoxNum)
+            {
+              drawRectOnlyStroke(yourTeamStartPos - teamMemberIncrement*i - 3, 247, 66, 66, "rgb(70, 5, 60)", 5);
+            }
           }
         }
         //write out description
@@ -490,31 +796,58 @@
           fillText("Awaiting enemy turn....", WIDTH/2 - 100, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
         }
       }
-      //show controls
+      //show controls at top
       fillText("Use Attack: ENTER", 10, 10, "14pt nature", "black", "left", "top");
-      fillText("Select Attack:", 9, 35, "14pt nature", "black", "left", "top");
-      ctx.drawImage(leftArrowImage, 115, 35, 20, 20);
-      ctx.drawImage(rightArrowImage, 140, 35, 20, 20);
+      fillText("Confirm Enemy Selection: SHIFT", 10, 35, "14pt nature", "black", "left", "top");
+      fillText("Select Attack:", 9, 60, "14pt nature", "black", "left", "top");
+      ctx.drawImage(leftArrowImage, 115, 60, 20, 20);
+      ctx.drawImage(rightArrowImage, 140, 60, 20, 20);
       
       //if you deal damage...
-      if (showDealDamage)
+      if (showDealDamage && sendHittingAll)
       {
         //freezeFrame = frame;
-        drawBubbleDamage(sendDamageInfo.type, sendDamageInfo.number, 5, freezeFrame + 180);
-      }
-      if (alphVal === 0)
-      {
-        showDealDamage = false;
-      }
-      
-      //if other player is here, draw them
-      if (bothPlayersAvailable)
-      {
-        for (let i = 0; i < theirTeam.length; i++)
+        for (let i = 0; i < enemyTeam.length; i++)
         {
-          drawRect(enemyTeamStartPos + teamMemberIncrement*i, 250, 60, 60, theirColor);
+          alphValSend = drawBubbleDamage(sendDamageInfo.type, sendDamageInfo.number, i + 5, freezeFrameSend + 180, freezeFrameSend);
         }
       }
+      else if (showDealDamage)
+      {
+        alphValSend = drawBubbleDamage(sendDamageInfo.type, sendDamageInfo.number, targetKnight, freezeFrameSend + 180, freezeFrameSend);
+      }
+      if (showTakeDamage && receiveHittingAll)
+      {
+        for (let i = 0; i < yourTeam.length; i++)
+        {
+          alphValReceive = drawBubbleDamage(receiveDamageInfo.type, receiveDamageInfo.number, i, freezeFrameReceive + 180, freezeFrameReceive);
+        }
+      }
+      else if (showTakeDamage)
+      {
+        alphValReceive = drawBubbleDamage(receiveDamageInfo.type, receiveDamageInfo.number, targettedKnight, freezeFrameReceive + 180, freezeFrameReceive);
+      }
+      if (showHealSend)
+      {
+        alphValSend = drawBubbleDamage(sendDamageInfo.type, sendDamageInfo.number, 4 - targetKnight, freezeFrameSend + 180, freezeFrameSend);
+      }
+      if (showHealReceive)
+      {
+        alphValReceive = drawBubbleDamage(receiveDamageInfo.type, receiveDamageInfo.number, 9 - targettedKnight, freezeFrameReceive + 180, freezeFrameReceive);
+      }
+      if (alphValSend === 0)
+      {
+        showDealDamage = false;
+        showHealSend = false;
+      }
+      if (alphValReceive === 0)
+      {
+        showTakeDamage = false;
+        showHealReceive = false;
+      }
+      
+      
+      
       if (enemyLeft === true)
       {
         fillText("The enemy player", WIDTH/2, 75, "18pt nature", "rgb(15, 15, 0)", "center", "middle");
@@ -551,6 +884,8 @@
 
       //receive the enemy team from the server
       socket.on("sendEnemyTeam", (data) => {
+        //data.theBadGuys.image.src = 
+        
         enemyTeam = data.theBadGuys;
 
         //once the enemy team is received, set gameplay order
@@ -605,7 +940,7 @@
         
         
         turnOrder = doctorOwnership(data.newTurnOrder);
-        console.dir(turnOrder);
+        //console.dir(turnOrder);
         if (turnOrder[0].team === "me")
         {
           takingTurn = true;
@@ -617,6 +952,42 @@
       
       socket.on("displayEnemyLeft", () => {
         enemyLeft = true;
+      });
+      
+      socket.on("receiveDamageUI", (data) => {
+        showTakeDamage = true;
+        showDealDamage = false;
+        receiveDamageInfo.type = data.damType;
+        receiveDamageInfo.number = data.damNum;
+        yourTeam[data.targetNum].shaking = true;
+        if (data.targetType === "attackAll")
+        {
+          receiveHittingAll = true;
+        }
+        sendHittingAll = false;
+        //console.log(targettedKnight);
+        for (let i = 0; i < enemyTeam.length; i++)
+        {
+          enemyTeam[i].shaking = false;
+        }
+        targettedKnight = 4 - data.targetNum;
+        freezeFrameReceive = frame;
+        //shakeCharacter(freezeFrameReceive + 60);
+      });
+      
+      socket.on("receiveAbilityUI", (data) => {
+        //showReceiveAssistBox = true;
+        showHealReceive = true;
+        showHealSend = false;
+        receiveDamageInfo.type = data.abilityType;
+        receiveDamageInfo.number = data.abilityNum;
+        console.dir(data);
+        for (let i = 0; i < enemyTeam.length; i++)
+        {
+          enemyTeam[i].shaking = false;
+        }
+        targettedKnight = 4 - data.targetNum;
+        freezeFrameReceive = frame;
       });
 
     };
@@ -636,6 +1007,13 @@
       }
       return fullTurnOrder;
     };
+
+    const drawTint = (startX, startY, width, height, color) => {
+      ctx.save();
+      ctx.fillStyle = color;
+      ctx.fillRect(startX, startY, width, height);
+      ctx.restore();
+    };
     
     const drawRectWithStroke = (xPos, yPos, width, height, fillStyle, strokeStyle, lineWidth) => {
       ctx.save();
@@ -643,6 +1021,14 @@
       ctx.strokeStyle = strokeStyle;
       ctx.lineWidth = lineWidth;
       ctx.fillRect(xPos, yPos, width, height);
+      ctx.strokeRect(xPos, yPos, width, height);
+      ctx.restore();
+    };
+
+    const drawRectOnlyStroke = (xPos, yPos, width, height, strokeStyle, lineWidth) => {
+      ctx.save();
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = lineWidth;
       ctx.strokeRect(xPos, yPos, width, height);
       ctx.restore();
     };
@@ -665,18 +1051,6 @@
       ctx.restore();
     };
 
-    /*
-    const fillTextWithAlpha = (string, x, y, css, color, textAlign, textBaseline) => {
-      ctx.save();
-      ctx.font = css;
-      ctx.textAlign = textAlign;
-      ctx.textBaseline = textBaseline;
-      ctx.fillStyle = color;
-      ctx.fillText(string, x, y);
-      ctx.restore();
-    };
-    */
-
     const genDirection = () => {
       let x = Math.floor((Math.random() * 10) - 5);
       let y = Math.floor((Math.random() * 10) - 5);
@@ -694,10 +1068,28 @@
     };
 
     const loadImages = () => {
+      backgroundImage.src = '../media/naturesKnightsbg.png';
+      
       arrowImage.src = '../media/arrow.png';
       arrowSpritesheetImage.src = '../media/arrowSpritesheet.png';
       leftArrowImage.src = '../media/arrowLeft.png';
       rightArrowImage.src = '../media/arrowRight.png';
+      
+      knightImages.sponge.src = '../media/sponge.png';
+      knightImages.seaSerpent.src = '../media/sea_serpent.png';
+      knightImages.blossomBird.src = '../media/blossom_bird.png';
+      knightImages.monkey.src = '../media/monkey.png';
+      knightImages.stupidSnake.src = '../media/stupidSnake.png';
+      knightImages.redRect.src = '../media/redRect.png';
+      knightImages.savageTiger.src = '../media.redRect.png';
+      knightImages.chipmonk.src = '../media.redRect.png';
+      
+      spongeImage.src = '../media/sponge.png';
+      seaSerpentImage.src = '../media/sea_serpent.png';
+      blossomBirdImage.src = '../media/blossom_bird.png';
+      monkeyImage.src = '../media/monkey.png';
+      stupidSnakeImage.src = '../media/stupidSnake.png';
+      redRectImage.src = '../media/redRect.png';
     };
 
     const init = () => {
@@ -706,6 +1098,8 @@
       canvas.height = 500;
       WIDTH = canvas.width;
       HEIGHT = canvas.height;
+      buffer.width = WIDTH;
+      buffer.height = HEIGHT;
       calculateTeam(5);
       setInputDaemon();
       loadImages();
@@ -719,7 +1113,7 @@
     {
       draw(yourTeam, enemyTeam);
       checkPlayerInput();
-      console.log(takingTurn);
+      //console.log(takingTurn);
       window.requestAnimationFrame(update);
     }
 
@@ -729,7 +1123,7 @@
   <!--<script src="js/keys.js"></script>-->
 </head>
 <body>
-  <h1>Test Title!</h1>
+  <h1>Nature's Knights</h1>
   <canvas>
   </canvas>
   
