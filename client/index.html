@@ -8,6 +8,10 @@
       src: url(media/dream_orphans/dreamorphans.ttf);
     }
     @font-face{
+      font-family: sourceSans;
+      src: url(media/source_sans/SourceSansPro-Regular.ttf);
+    }
+    @font-face{
       font-family: roboto;
       src: url(media/Roboto/Roboto-Black.ttf);
     }
@@ -19,12 +23,45 @@
       left: 50%;
     }
     body{
-      background-color: rgb(50, 0, 110);
+      background-color: rgb(50, 50, 50);
     }
     h1{
       text-align: center;
+      color: rgb(205, 160, 10);
       font-family: nature;
       font-size: 30pt;
+    }
+    #credits{
+      position: absolute;
+      bottom: 0px;
+      width: 130px;
+      height: 100%;
+      background-color: rgb(0, 0, 0);
+      margin-left: 0px;
+    }
+    h2{
+      color: rgb(255, 255, 255);
+    }
+    h3{
+      color: rgb(255, 255, 255);
+    }
+    #game_design{
+      position: absolute;
+      top: 30px;
+      left: 10px;
+      font-family: sourceSans;
+    }
+    #sound_design{
+      position: absolute;
+      top: 230px;
+      left: 10px;
+      font-family: sourceSans;
+    }
+    #asset_production{
+      position: absolute;
+      top: 430px;
+      left: 10px;
+      font-family: sourceSans;
     }
   </style>
   <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
@@ -116,6 +153,8 @@
     let showAssistBox = false;
     let showHealSend = false;
     let showHealReceive = false;
+
+    let attackFailed = false;
     //let showReceiveAssistBox = false;
 
     //let ghostImg = new Image();
@@ -134,6 +173,10 @@
       savageTiger: new Image(),
       stupidSnake: new Image(),
       chipmonk: new Image(),
+    };
+    let backgroundMusic = new Audio();
+    let soundEffects = {
+      
     };
     let monkeyImage = new Image();
     let blossomBirdImage = new Image();
@@ -717,6 +760,29 @@
           //drawRect(enemyTeamStartPos + teamMemberIncrement*i, 250, 60, 60, theirColor);
         }
       }
+      //if the other player is not here, prompt the user to wait
+      else if (!bothPlayersAvailable && yourTicketNum % 2 == 1)
+      {
+        //say you are looking for an enemy to play against
+        if (frame % 100 < 33)
+        {
+          fillText("Searching for an opponent..", WIDTH/2 - 100, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
+        }
+        else if (frame % 100 < 66)
+        {
+          fillText("Searching for an opponent...", WIDTH/2 - 100, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
+        }
+        else
+        {
+          fillText("Searching for an opponent....", WIDTH/2 - 100, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
+        }
+      }
+      //if the other player i9s not here and you are the second player, ask the player to restart
+      else if (!bothPlayersAvailable && yourTicketNum % 2 == 0)
+      {
+        fillText("There was an error.", WIDTH/2 - 100, 75, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
+        fillText("Please reconnect.", WIDTH/2 - 100, 125, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
+      }
       //draw your button options
       if (takingTurn)
       {
@@ -965,14 +1031,12 @@
           receiveHittingAll = true;
         }
         sendHittingAll = false;
-        //console.log(targettedKnight);
         for (let i = 0; i < enemyTeam.length; i++)
         {
           enemyTeam[i].shaking = false;
         }
         targettedKnight = 4 - data.targetNum;
         freezeFrameReceive = frame;
-        //shakeCharacter(freezeFrameReceive + 60);
       });
       
       socket.on("receiveAbilityUI", (data) => {
@@ -1092,6 +1156,11 @@
       redRectImage.src = '../media/redRect.png';
     };
 
+    const loadAudio = () => {
+      backgroundMusic.src = '../media/naturesKnights.wav';
+      backgroundMusic.loop = true;
+    };
+
     const init = () => {
       socket = io.connect();
       canvas.width = 750;
@@ -1103,6 +1172,8 @@
       calculateTeam(5);
       setInputDaemon();
       loadImages();
+      loadAudio();
+      //backgroundMusic.play();
       //ghostImg.src = '../media/ghost.png';
       setCalls();
       //startFight();
@@ -1126,6 +1197,22 @@
   <h1>Nature's Knights</h1>
   <canvas>
   </canvas>
+  <div id="credits">
+    <div id="game_design">
+      <h2>Game Design:<h3>Mark Obeldobel</h3></h2>
+    </div>
+    <div id="sound_design">
+      <h2>Sound Design:<h3>Mark Obeldobel</h3></h2>
+    </div>
+    <div id="asset_production">
+      <h2>Asset Production: <h3>Andrew McMahon</h3></h2>
+    </div>
+  </div>
+  <!--
+  <section id="audioControls">
+    <audio src="media/naturesKnights.wav" autostart="true" loop="true" hidden="true">
+  </section>
+  -->
   
 </body>
 </html>

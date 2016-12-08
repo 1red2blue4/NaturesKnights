@@ -16,7 +16,7 @@ const port = process.env.PORT || process.env.NODE_PORT || 3500;
 // (in this case the same folder as the server js file)
 
 //file names in the client folder
-const fileNames = ['/index.html', '/media/ghost.png', '/media/logo.png', '/media/arrow.png', '/media/arrowSpritesheet.png', '/media/arrowLeft.png', '/media/arrowRight.png', '/media/dream_orphans/dreamorphans.ttf', '/media/Roboto/Roboto-Black.ttf', '/media/blossom_bird.png', '/media/sea_serpent.png', '/media/sponge.png', '/media/stupid_snake.png', '/media/monkey.png', '/media/redRect.png', '/media/naturesKnightsbg.png'];
+const fileNames = ['/index.html', '/media/ghost.png', '/media/logo.png', '/media/arrow.png', '/media/arrowSpritesheet.png', '/media/arrowLeft.png', '/media/arrowRight.png', '/media/dream_orphans/dreamorphans.ttf', '/media/source_sans/SourceSansPro-Regular.ttf', '/media/Roboto/Roboto-Black.ttf', '/media/blossom_bird.png', '/media/sea_serpent.png', '/media/sponge.png', '/media/stupid_snake.png', '/media/monkey.png', '/media/redRect.png', '/media/naturesKnightsbg.png', '/media/naturesKnights.wav'];
 
 const cachedFiles = {};
 
