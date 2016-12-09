@@ -22,6 +22,9 @@
       margin: 0px 0 0 -375px;
       left: 50%;
     }
+    html{
+      overflow-y: hidden;
+    }
     body{
       background-color: rgb(50, 50, 50);
     }
@@ -63,6 +66,33 @@
       left: 10px;
       font-family: sourceSans;
     }
+    #musicToggle{
+      position: absolute;
+      bottom: -65px;
+      background-color: rgb(20, 20, 20);
+      right: 100px;
+      border-radius: 25px;
+      line-height: 3px;
+      transition: 1s;
+    }
+    #musicToggle:hover{
+      bottom: -30px;
+      transition: 1s;
+      cursor: pointer;
+    }
+    h4{
+      color: rgb(120, 120, 120);
+      font-family: sourceSans;
+      text-align: center;
+    }
+    h5{
+      color: rgb(120, 120, 120);
+      font-family: sourceSans;
+      text-align: center;
+    }
+    h6{
+      background-color: rgb(20, 20, 20);
+    }
   </style>
   <script src="https://npmcdn.com/babel-core@5.8.38/browser.min.js"></script>
   <script src="/socket.io/socket.io.js"></script>
@@ -100,6 +130,7 @@
     let currKnight = {};
     currKnight.teamNum = -1;
 
+    let toggleMusicButton = document.querySelector("#musicToggle");
 
     //set button values
     let buttonWidth = 125;
@@ -163,6 +194,7 @@
     let arrowSpritesheetImage = new Image();
     let leftArrowImage = new Image();
     let rightArrowImage = new Image();
+    let healthCircleImage = new Image();
     let knightImages = {
       monkey: new Image(),
       blossomBird: new Image(),
@@ -175,6 +207,7 @@
       chipmonk: new Image(),
     };
     let backgroundMusic = new Audio();
+    /*
     let soundEffects = {
       
     };
@@ -184,6 +217,7 @@
     let stupidSnakeImage = new Image();
     let seaSerpentImage = new Image();
     let redRectImage = new Image();
+    */
 
     let draws = {};
 
@@ -209,18 +243,20 @@
       return myAttack;
     };
 
-    let CreateKnight = (nm, hlth, def, spd, drftPts, cnKnckOvr, alv, psnd, brnd, flng, spkd, atcks, img, strngNm) => {
+    let CreateKnight = (nm, hlth, def, spd, drftPts, cnKnckOvr, flng, spkd, atcks, img, strngNm) => {
       let myKnight = {};
       myKnight.name = nm;
       myKnight.stringName = strngNm;
       myKnight.HLTH = hlth;
+      myKnight.maxHealth = hlth;
       myKnight.DEF = def;
       myKnight.speed = spd;
       myKnight.draftPoints = drftPts;
       myKnight.canKnockOver = cnKnckOvr;
-      myKnight.alive = alv;
-      myKnight.poisoned = psnd;
-      myKnight.burned = brnd;
+      myKnight.knockedOver = false;
+      myKnight.alive = true;
+      myKnight.poisoned = false;
+      myKnight.burned = false;
       myKnight.flying = flng;
       myKnight.spiked = spkd;
       myKnight.attacks = atcks;
@@ -274,48 +310,48 @@
       });
     };
 
-    let savageTiger = CreateKnight("Savage Tiger", 5, 0, 13, 2, false, true, false, false, false, false,
+    let savageTiger = CreateKnight("Savage Tiger", 5, 0, 13, 2, false, false, false,
       [CreateAttack("Claw", 2, 0, "Claw the enemy apart.", 
         CreateSpecialFeatures(false, false, false, true, false, true, "front")
       )],
-      redRectImage,
-      "redRect"
+      knightImages.savageTiger,
+      "savageTiger"
     );
 
-    let chipmonk = CreateKnight("Chipmonk", 2, 0, 7, 1, false, true, false, false, false, false,
+    let chipmonk = CreateKnight("Chipmonk", 2, 0, 7, 1, false, false, false,
       [CreateAttack("Bonk", 1, 0, "Bonks the enemy with your head.",
         CreateSpecialFeatures(true, false, false, false, true, true, "any")
       )],
-      redRectImage,
-      "redRect"
+      knightImages.chipmonk,
+      "chipmonk"
     );
 
-    let seaSerpent = CreateKnight("Sea Serpent", 7, 0, 8, 3, false, true, false, false, true, false,
+    let seaSerpent = CreateKnight("Sea Serpent", 7, 0, 8, 3, false, true, false,
       [CreateAttack("Wave Smash", 2, 0, "Smashes the enemy with a tidal wave.",
         CreateSpecialFeatures(true, false, false, false, false, false, "front")
       ), CreateAttack("Sea Gust", 1, 1, "Sends a gust of wind at the enemies",
         CreateSpecialFeatures(false, false, false, true, false, false, "all")
       )],
-      seaSerpentImage,
+      knightImages.seaSerpent,
       "seaSerpent"
     );
 
-    let blossomBird = CreateKnight("Blossom Bird", 7, 0, 12, 3, false, true, false, false, true, false,
+    let blossomBird = CreateKnight("Blossom Bird", 7, 0, 12, 3, false, true, false,
       [CreateAttack("Dive", 3, 0, "Dive straight through an enemy.",
         CreateSpecialFeatures(false, false, false, false, true, true, "any")
       ),
       CreateAttack("Blossom", 3, 2, "Heal a character 3 health.", 
         CreateSpecialFeatures(false, false, false, false, false, false, "healAny")
       )],
-      blossomBirdImage,
+      knightImages.blossomBird,
       "blossomBird"
     );
 
-    let sponge = CreateKnight("Sponge", 10, 1, 4, 3, false, true, false, false, false, false,
+    let sponge = CreateKnight("Sponge", 10, 1, 4, 3, false, false, false,
       [CreateAttack("Lunge", 1, 0, "Jump at the enemy.", 
         CreateSpecialFeatures(false, false, false, false, false, true, "any")
       )],
-      spongeImage,
+      knightImages.sponge,
       "sponge"
     );
 
@@ -412,7 +448,11 @@
       }
       
       frame++;
-      console.log(`Target Knight: ${targetKnight}`);
+      
+      console.dir(myTeam);
+      console.dir(yourTeam);
+      
+      //console.log(`Target Knight: ${targetKnight}`);
       //console.log(`Targetted Knight: ${targettedKnight}`)
     };
 
@@ -421,10 +461,11 @@
       if (takingTurn && myKeys.keyup[myKeys.KEYBOARD.KEY_ENTER])
       {
         const getAttackType = lookForAttType(currKnight.attacks[currentButton]);
+        receiveHittingAll = false;
         if (getAttackType === "attackAll")
         {
           sendHittingAll = true;
-          receiveHittingAll = false;
+          
           for (let i = 0; i < enemyTeam.length; i++)
           {
             targetKnight = i + 5;
@@ -464,6 +505,7 @@
       //move to the next button option
       if (takingTurn && myKeys.keyup[myKeys.KEYBOARD.KEY_RIGHT])
       {
+        //selecting an attack
         if (!showTargetBox && !showAssistBox)
         {
           //reset bloat
@@ -476,23 +518,17 @@
             currentButton = 0;
           }
         }
+        //selecting an enemy
         else if (showTargetBox)
         {
           const targetOptions = enemyTeam.length;
-          targetBoxNum++;
-          if (targetBoxNum > targetOptions - 1)
-          {
-            targetBoxNum = 0;
-          }
+          targetBoxNum = queryDirectionKey(enemyTeam, true, true, targetBoxNum);
         }
+        //selecting an ally
         else
         {
           const targetOptions = yourTeam.length;
-          targetBoxNum--;
-          if (targetBoxNum < 0)
-          {
-            targetBoxNum = targetOptions - 1;
-          }
+          targetBoxNum = queryDirectionKey(yourTeam, false, false, targetBoxNum);
         }
         myKeys.keyup[myKeys.KEYBOARD.KEY_RIGHT] = false;
       }
@@ -514,61 +550,171 @@
         else if (showTargetBox)
         {
           const targetOptions = enemyTeam.length;
-          targetBoxNum--;
-          if (targetBoxNum > targetOptions - 1)
-          {
-            targetBoxNum = 0;
-          }
+          targetBoxNum = queryDirectionKey(enemyTeam, false, false, targetBoxNum);
         }
         else
         {
           const targetOptions = yourTeam.length;
-          targetBoxNum++;
-          if (targetBoxNum > targetOptions - 1)
-          {
-            targetBoxNum = 0;
-          }
+          targetBoxNum = queryDirectionKey(yourTeam, true, true, targetBoxNum);
         }
         
         myKeys.keyup[myKeys.KEYBOARD.KEY_LEFT] = false;
       }
     };
+    
+    //queryDirectionKey() used in checkPlayerInput()
+    //passes in the team, whether or not you are incrementing, and whether or not you are checking to see if it is greater than the bounds, and the current box number
+    //will call itself if the character passed over is dead
+    //returns the box number
+    const queryDirectionKey = (team, increment, greater, theBoxNum) => {
+      const targetOptions = team.length;
+      let boxNum = theBoxNum;
+      //based upon the increment
+      if (increment)
+      {
+        boxNum++;
+      }
+      else
+      {
+        boxNum--;  
+      }
+      //wrap
+      if (greater && boxNum > targetOptions - 1)
+      {
+        boxNum = 0;
+      }
+      else if (!greater && boxNum < 0)
+      {
+        boxNum = targetOptions - 1;
+      }
+      //if you reach a dead character, do this again
+      if (!team[boxNum].alive)
+      {
+        boxNum = queryDirectionKey(team, increment, greater, boxNum);
+      }
+      return boxNum;
+    };
 
     //create useAttack() function
     const useAttack = (myAttack, targetType) => {
-      //ATK
-      //mana
-      //specialFeatures.knocksOver
-      //specialFeatures.burns
-      //specialFeatures.poisons
-      //specialFeatures.breaksShield
-      //specialFeatures.hitsFromTop
-      //specialFeatures.direct
-      //console.dir(myAttack.specialFeatures.targets);
+      
+      useAttackCalc(myAttack, targetType);
+      useAttackUI(myAttack, targetType);
+      useAttackCleanup(targetType);
+      
+    };
+
+    const useAttackUI = (myAttack, targetType) => {
+      
       showDealDamage = true;
       showTakeDamage = false;
       sendDamageInfo.type = "hurt";
-      sendDamageInfo.number = myAttack.ATK;
-      console.log(`Damage: ${myAttack.ATK}`);
-      console.dir('myAttack');
       freezeFrameSend = frame;
       showTargetBox = false;
       turnTaken = true;
       takingTurn = false;
-      enemyTeam[targetKnight-5].shaking = true;
-      for (let i = 0; i < yourTeam.length; i++)
+      if (sendDamageInfo.number !== 0 && sendDamageInfo.number !== "Miss!")
       {
-        yourTeam[i].shaking = false;
+        enemyTeam[targetKnight-5].shaking = true;
+        for (let i = 0; i < yourTeam.length; i++)
+        {
+          yourTeam[i].shaking = false;
+        }
       }
       //myKeys.keyup[myKeys.KEYBOARD.KEY_ENTER] = false;
       socket.emit("sendDamageUI", {damType: sendDamageInfo.type, damNum: sendDamageInfo.number, yourRoomNum, targetNum: targetKnight - 5, targetType });
-      ////update damage here
-      ///then
-      //socket.emit("attack", {damType: sendDamageInfo.type, damNum: sendDamageInfo.number, yourRoomNum, specialFeats: currKnight.attacks[currentButton].specialFeatures });
+      socket.emit("recalculateTeams", {yourTeam, enemyTeam, yourRoomNum});
+    };
+
+    const useAttackCalc = (myAttack, targetType) =>{
+      
+      let type = {};
+      if (myAttack.specialFeatures.targets === "front")
+      {
+        type = "damage";
+        attackArithmetic(myAttack, targetType);
+      }
+      else if (myAttack.specialFeatures.targets === "any")
+      {
+        type = "damage";
+        attackArithmetic(myAttack, targetType);
+      }
+      else if (myAttack.specialFeatures.targets === "all")
+      {
+        type = "damage";
+        attackArithmetic(myAttack, targetType);
+      }
+      else if (myAttack.specialFeatures.targets === "healAny")
+      {
+        sendDamageInfo.number = myAttack.ATK;
+        type = "heal";
+        yourTeam[targetKnight].HLTH += sendDamageInfo.number;
+        if (yourTeam[targetKnight].HLTH > yourTeam[targetKnight].maxHealth)
+        {
+          
+        }yourTeam[targetKnight].HLTH = yourTeam[targetKnight].maxHealth;
+      }
+    };
+
+    const attackArithmetic = (myAttack, targetType) => {
+      
+      sendDamageInfo.number = myAttack.ATK;
+      //calculate DEF
+      if (!myAttack.specialFeatures.breaksShield)
+      {
+        sendDamageInfo.number -= enemyTeam[targetKnight-5].DEF;
+        if (sendDamageInfo.number < 0)
+        {
+          sendDamageInfo.number = 0;
+        }
+      }
+      //calculate knock over
+      if (myAttack.specialFeatures.knocksOver && enemyTeam[targetKnight-5].canKnockOver)
+      {
+        enemyTeam[targetKnight-5].knockedOver = true;
+      }
+      //calculate poison
+      if (myAttack.specialFeatures.poisons)
+      {
+        enemyTeam[targetKnight-5].poisoned = true;
+      }
+      //calculate burn
+      if (myAttack.specialFeatures.burns)
+      {
+        enemyTeam[targetKnight-5].burned = true;
+      }
+      //calculate spiked
+      if (myAttack.specialFeatures.direct && enemyTeam[targetKnight-5].spiked)
+      {
+        let saveCharNum = -1;
+        for (let i = 0; i < yourTeam.length; i++)
+        {
+          if (currKnight.name == yourTeam[i].name)
+          {
+            saveCharNum = i;
+          }
+        }
+        yourTeam[saveCharNum].HLTH -= 1;
+      }
+      //calculate flying
+      if (enemyTeam[targetKnight-5].flying && !myAttack.specialFeatures.hitsFlying && targetType !== "attackAll")
+      {
+        sendDamageInfo.number = "Miss!";
+      }
+      //finally, deal damage
+      if (typeof(sendDamageInfo.number) === "number")
+      {
+        enemyTeam[targetKnight-5].HLTH -= sendDamageInfo.number;
+      }      
+    }
+
+    const useAttackCleanup = (targetType) => {
+      //attack all has its own form of changing the current button to 0
       if (targetType != "attackAll")
       {
         currentButton = 0;
       }
+      //set up next turn
       socket.emit("takeTurn", { turnOrder, yourRoomNum });
     };
 
@@ -577,7 +723,7 @@
       showHealSend = true;
       showHealReceive = false;
       sendDamageInfo.type = "heal";
-      sendDamageInfo.number = myAbility.ATK;
+      //sendDamageInfo.number = myAbility.ATK;
       freezeFrameSend = frame;
       showAssistBox = false;
       turnTaken = true;
@@ -723,19 +869,47 @@
       //draw your team
       for (let i = 0; i < myTeam.length; i++)
       {
-        //alphValReceive = drawBubbleDamage(receiveDamageInfo.type, receiveDamageInfo.number, targettedKnight, freezeFrameReceive + 180, freezeFrameReceive);
-        if (myTeam[i].shaking)
+        //draw shaking
+        if (myTeam[i].shaking && myTeam[i].alive)
         {
+          //console.log(myTeam[i].shaking && myTeam[i].alive);
+          
           const vector = shakeCharacter(receiveDamageInfo.type, receiveDamageInfo.number, targettedKnight, freezeFrameReceive + 40, freezeFrameReceive);
-          ctx.drawImage(myTeam[i].image, 0, 0, 300, 300, yourTeamStartPos - teamMemberIncrement*i + vector.x, 250 + vector.y, 75, 75);
+          
+          ctx.drawImage(knightImages[myTeam[i].stringName], 0, 0, 300, 300, yourTeamStartPos - teamMemberIncrement*i + vector.x, 250 + vector.y, 75, 75);
         }
-        else
+        
+        //draw normally
+        else if (myTeam[i].alive);
         {
-          ctx.drawImage(myTeam[i].image, 0, 0, 300, 300, yourTeamStartPos - teamMemberIncrement*i, 250, 75, 75);
+          console.log(myTeam[i].alive);
+          ctx.drawImage(knightImages[myTeam[i].stringName], 0, 0, 300, 300, yourTeamStartPos - teamMemberIncrement*i, 250, 75, 75);
         }
         
         
-        //drawRect(yourTeamStartPos - teamMemberIncrement*i, 250, 60, 60, yourColor);
+        //show the health of the character
+        if (yourTeam[i].HLTH == yourTeam[i].maxHealth)
+        {
+          yourTeam[i].fontColor = "rgb(5, 55, 5)";
+        }
+        else if (yourTeam[i].HLTH < yourTeam[i].maxHealth && yourTeam[i].HLTH > 0)
+        {
+          yourTeam[i].fontColor = "rgb(165, 165, 35)";
+        }
+        else if (yourTeam[i].HLTH == 0)
+        {
+          yourTeam[i].fontColor = "rgb(235, 20, 20)";
+          yourTeam[i].alive = false;
+        }
+        
+        //show health
+        fillText(yourTeam[i].HLTH, yourTeamStartPos - teamMemberIncrement*i + 30, 340, "18pt roboto", yourTeam[i].fontColor, "center", "middle");
+        
+        //draw a background for the health
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ctx.drawImage(healthCircleImage, 0, 0, 300, 300, yourTeamStartPos - teamMemberIncrement*i, 310, 60, 60);
+        ctx.restore();
       }
       //if other player is here, draw them
       if (bothPlayersAvailable)
@@ -745,43 +919,33 @@
         //draw enemy team
         for (let i = 0; i < theirTeam.length; i++)
         {
-          if (theirTeam[i].shaking)
+          if (theirTeam[i].shaking && theirTeam[i].alive)
           {
             const vector = shakeCharacter(sendDamageInfo.type, sendDamageInfo.number, targettedKnight, freezeFrameSend + 40, freezeFrameSend);
             ctx.drawImage(knightImages[theirTeam[i].stringName], 0, 0, 300, 300, enemyTeamStartPos + teamMemberIncrement*i + vector.x, 250 + vector.y, 75, 75);
           }
-          else
+          else if (theirTeam[i].alive)
           {
             ctx.drawImage(knightImages[theirTeam[i].stringName], 0, 0, 300, 300, enemyTeamStartPos + teamMemberIncrement*i, 250, 75, 75);
           }
-          
-          
-          //ctx.drawImage(theirTeam[i].image, 0, 0, 300, 300, enemyTeamStartPos + teamMemberIncrement*i, 250, 75, 75);
-          //drawRect(enemyTeamStartPos + teamMemberIncrement*i, 250, 60, 60, theirColor);
         }
       }
       //if the other player is not here, prompt the user to wait
       else if (!bothPlayersAvailable && yourTicketNum % 2 == 1)
       {
-        //say you are looking for an enemy to play against
+        //looking for an enemy to play against
         if (frame % 100 < 33)
         {
-          fillText("Searching for an opponent..", WIDTH/2 - 100, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
+          fillText("Searching for an opponent..", WIDTH/2 - 133, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
         }
         else if (frame % 100 < 66)
         {
-          fillText("Searching for an opponent...", WIDTH/2 - 100, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
+          fillText("Searching for an opponent...", WIDTH/2 - 133, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
         }
         else
         {
-          fillText("Searching for an opponent....", WIDTH/2 - 100, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
+          fillText("Searching for an opponent....", WIDTH/2 - 133, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
         }
-      }
-      //if the other player i9s not here and you are the second player, ask the player to restart
-      else if (!bothPlayersAvailable && yourTicketNum % 2 == 0)
-      {
-        fillText("There was an error.", WIDTH/2 - 100, 75, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
-        fillText("Please reconnect.", WIDTH/2 - 100, 125, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
       }
       //draw your button options
       if (takingTurn)
@@ -863,9 +1027,9 @@
         }
       }
       //show controls at top
-      fillText("Use Attack: ENTER", 10, 10, "14pt nature", "black", "left", "top");
-      fillText("Confirm Enemy Selection: SHIFT", 10, 35, "14pt nature", "black", "left", "top");
-      fillText("Select Attack:", 9, 60, "14pt nature", "black", "left", "top");
+      fillText("Use Attack: ENTER", 10, 10, "14pt nature", "rgb(25, 55, 5)", "left", "top");
+      fillText("Confirm Enemy Selection: SHIFT", 10, 35, "14pt nature", "rgb(25, 55, 5)", "left", "top");
+      fillText("Select Attack:", 9, 60, "14pt nature", "rgb(25, 55, 5)", "left", "top");
       ctx.drawImage(leftArrowImage, 115, 60, 20, 20);
       ctx.drawImage(rightArrowImage, 140, 60, 20, 20);
       
@@ -934,8 +1098,6 @@
         console.log(`Your ticket num is: ${yourTicketNum}`);
 
         fillText(ctx, `You are in room: ${yourRoomNum}`, WIDTH*5/6, HEIGHT/12, "12px nature", "purple");
-        
-        //ctx.drawImage(ghostImg, WIDTH/2 - 150, HEIGHT*3/4);
 
         socket.emit("sendTeam", {team: yourTeam, room: yourRoomNum, ticket: yourTicketNum});
 
@@ -1006,7 +1168,6 @@
         
         
         turnOrder = doctorOwnership(data.newTurnOrder);
-        //console.dir(turnOrder);
         if (turnOrder[0].team === "me")
         {
           takingTurn = true;
@@ -1021,22 +1182,51 @@
       });
       
       socket.on("receiveDamageUI", (data) => {
+        
         showTakeDamage = true;
         showDealDamage = false;
-        receiveDamageInfo.type = data.damType;
-        receiveDamageInfo.number = data.damNum;
-        yourTeam[data.targetNum].shaking = true;
         if (data.targetType === "attackAll")
         {
           receiveHittingAll = true;
         }
         sendHittingAll = false;
-        for (let i = 0; i < enemyTeam.length; i++)
+        receiveDamageInfo.type = data.damType;
+        receiveDamageInfo.number = data.damNum;
+        if (data.damNum !== 0 && data.damNum !=="Miss!")
         {
-          enemyTeam[i].shaking = false;
+          yourTeam[data.targetNum].shaking = true;
+          for (let i = 0; i < enemyTeam.length; i++)
+          {
+            enemyTeam[i].shaking = false;
+          }
         }
+        
         targettedKnight = 4 - data.targetNum;
         freezeFrameReceive = frame;
+      });
+      
+      socket.on("sendTeamsForNewTurn", (data) => {
+        for (let i = 0; i < yourTeam.length; i++)
+        {
+          yourTeam[i].HLTH = data.myNewTeam[i].HLTH;
+          yourTeam[i].DEF = data.myNewTeam[i].DEF;
+          yourTeam[i].kncokedOver = data.myNewTeam[i].knockedOver;
+          yourTeam[i].poisoned = data.myNewTeam[i].poisoned;
+          yourTeam[i].burned = data.myNewTeam[i].burned;
+          yourTeam[i].spiked = data.myNewTeam[i].spiked;
+          yourTeam[i].flying = data.myNewTeam[i].flying;
+        }
+        
+        for (let i = 0; i < enemyTeam.length; i++)
+        {
+          enemyTeam[i].HLTH = data.theirNewTeam[i].HLTH;
+          enemyTeam[i].DEF = data.theirNewTeam[i].DEF;
+          enemyTeam[i].kncokedOver = data.theirNewTeam[i].knockedOver;
+          enemyTeam[i].poisoned = data.theirNewTeam[i].poisoned;
+          enemyTeam[i].burned = data.theirNewTeam[i].burned;
+          enemyTeam[i].spiked = data.theirNewTeam[i].spiked;
+          enemyTeam[i].flying = data.theirNewTeam[i].flying;
+        }
       });
       
       socket.on("receiveAbilityUI", (data) => {
@@ -1045,7 +1235,7 @@
         showHealSend = false;
         receiveDamageInfo.type = data.abilityType;
         receiveDamageInfo.number = data.abilityNum;
-        console.dir(data);
+        youTeam[i].shaking = false;
         for (let i = 0; i < enemyTeam.length; i++)
         {
           enemyTeam[i].shaking = false;
@@ -1138,6 +1328,7 @@
       arrowSpritesheetImage.src = '../media/arrowSpritesheet.png';
       leftArrowImage.src = '../media/arrowLeft.png';
       rightArrowImage.src = '../media/arrowRight.png';
+      healthCircleImage.src = '../media/healthCircle.png';
       
       knightImages.sponge.src = '../media/sponge.png';
       knightImages.seaSerpent.src = '../media/sea_serpent.png';
@@ -1145,15 +1336,36 @@
       knightImages.monkey.src = '../media/monkey.png';
       knightImages.stupidSnake.src = '../media/stupidSnake.png';
       knightImages.redRect.src = '../media/redRect.png';
-      knightImages.savageTiger.src = '../media.redRect.png';
-      knightImages.chipmonk.src = '../media.redRect.png';
+      knightImages.savageTiger.src = '../media/savage_tiger_taken.png';
+      knightImages.chipmonk.src = '../media/chipmonk.png';
       
+      /*
       spongeImage.src = '../media/sponge.png';
       seaSerpentImage.src = '../media/sea_serpent.png';
       blossomBirdImage.src = '../media/blossom_bird.png';
       monkeyImage.src = '../media/monkey.png';
-      stupidSnakeImage.src = '../media/stupidSnake.png';
+      stupidSnakeImage.src = '../media/stupid_snake.png';
       redRectImage.src = '../media/redRect.png';
+      */
+    };
+
+    const loadScreenUI = () => {
+      toggleMusicButton.onclick = toggleMusic;
+    };
+
+    const toggleMusic = (e) => {
+      let myh5 = document.querySelector("h5");
+      if (myh5.innerHTML == "On")
+      {
+        myh5.innerHTML = "Off";
+        backgroundMusic.pause();
+        backgroundMusic.currentTime = 0;
+      }
+      else
+      {
+        myh5.innerHTML = "On";
+        backgroundMusic.play();
+      }
     };
 
     const loadAudio = () => {
@@ -1173,6 +1385,7 @@
       setInputDaemon();
       loadImages();
       loadAudio();
+      loadScreenUI();
       //backgroundMusic.play();
       //ghostImg.src = '../media/ghost.png';
       setCalls();
@@ -1184,7 +1397,25 @@
     {
       draw(yourTeam, enemyTeam);
       checkPlayerInput();
-      //console.log(takingTurn);
+      for (let i = 0; i < yourTeam.length; i++)
+      {
+        if (yourTeam[i].HLTH <= 0)
+        {
+          yourTeam[i].HLTH = 0;
+          yourTeam[i].alive = false;
+        }
+        
+      }
+      for (let i = 0; i < enemyTeam.length; i++)
+      {
+        if (enemyTeam[i].HLTH <= 0)
+        {
+          enemyTeam[i].HLTH = 0;
+          enemyTeam[i].alive = false;
+        }
+      }
+      
+      
       window.requestAnimationFrame(update);
     }
 
@@ -1197,6 +1428,7 @@
   <h1>Nature's Knights</h1>
   <canvas>
   </canvas>
+  
   <div id="credits">
     <div id="game_design">
       <h2>Game Design:<h3>Mark Obeldobel</h3></h2>
@@ -1207,6 +1439,12 @@
     <div id="asset_production">
       <h2>Asset Production: <h3>Andrew McMahon</h3></h2>
     </div>
+  </div>
+  
+  <div id="musicToggle">
+    <h4>Music</h4>
+    <h5>Off</h5>
+    <h6>Blah</h6>
   </div>
   <!--
   <section id="audioControls">

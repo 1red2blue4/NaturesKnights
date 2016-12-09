@@ -16,7 +16,7 @@ const port = process.env.PORT || process.env.NODE_PORT || 3500;
 // (in this case the same folder as the server js file)
 
 //file names in the client folder
-const fileNames = ['/index.html', '/media/ghost.png', '/media/logo.png', '/media/arrow.png', '/media/arrowSpritesheet.png', '/media/arrowLeft.png', '/media/arrowRight.png', '/media/dream_orphans/dreamorphans.ttf', '/media/source_sans/SourceSansPro-Regular.ttf', '/media/Roboto/Roboto-Black.ttf', '/media/blossom_bird.png', '/media/sea_serpent.png', '/media/sponge.png', '/media/stupid_snake.png', '/media/monkey.png', '/media/redRect.png', '/media/naturesKnightsbg.png', '/media/naturesKnights.wav'];
+const fileNames = ['/index.html', '/media/ghost.png', '/media/logo.png', '/media/arrow.png', '/media/arrowSpritesheet.png', '/media/arrowLeft.png', '/media/arrowRight.png', '/media/healthCircle.png', '/media/dream_orphans/dreamorphans.ttf', '/media/source_sans/SourceSansPro-Regular.ttf', '/media/Roboto/Roboto-Black.ttf', '/media/blossom_bird.png', '/media/sea_serpent.png', '/media/sponge.png', '/media/stupid_snake.png', '/media/savage_tiger_taken.png', '/media/chipmonk.png', '/media/monkey.png', '/media/redRect.png', '/media/naturesKnightsbg.png', '/media/naturesKnights.wav'];
 
 const cachedFiles = {};
 
@@ -187,6 +187,10 @@ const onJoined = (sock) => {
   socket.on("sendDamageUI", (data) => {
     
     socket.broadcast.to(`room${data.yourRoomNum}`).emit("receiveDamageUI", { damType: data.damType, damNum: data.damNum, targetNum: data.targetNum, targetType: data.targetType });
+  });
+  
+  socket.on("recalculateTeams", (data) => {
+    socket.broadcast.to(`room${data.yourRoomNum}`).emit("sendTeamsForNewTurn", {theirNewTeam: data.yourTeam, myNewTeam: data.enemyTeam})
   });
   
   socket.on("sendAbilityUI", (data) => {
