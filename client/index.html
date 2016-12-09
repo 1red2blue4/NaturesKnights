@@ -870,22 +870,21 @@
       for (let i = 0; i < myTeam.length; i++)
       {
         //draw shaking
-        if (myTeam[i].shaking && myTeam[i].alive)
-        {
-          //console.log(myTeam[i].shaking && myTeam[i].alive);
-          
+        if (myTeam[i].shaking && myTeam[i].alive === true)
+        {          
           const vector = shakeCharacter(receiveDamageInfo.type, receiveDamageInfo.number, targettedKnight, freezeFrameReceive + 40, freezeFrameReceive);
           
           ctx.drawImage(knightImages[myTeam[i].stringName], 0, 0, 300, 300, yourTeamStartPos - teamMemberIncrement*i + vector.x, 250 + vector.y, 75, 75);
         }
         
         //draw normally
-        else if (myTeam[i].alive);
+        else if (myTeam[i].alive === true)
         {
-          console.log(myTeam[i].alive);
+          console.log(`Alive: ${myTeam[i].alive}`);
           ctx.drawImage(knightImages[myTeam[i].stringName], 0, 0, 300, 300, yourTeamStartPos - teamMemberIncrement*i, 250, 75, 75);
         }
         
+        //console.log(myTeam[i].alive);
         
         //show the health of the character
         if (yourTeam[i].HLTH == yourTeam[i].maxHealth)
@@ -1210,22 +1209,24 @@
         {
           yourTeam[i].HLTH = data.myNewTeam[i].HLTH;
           yourTeam[i].DEF = data.myNewTeam[i].DEF;
-          yourTeam[i].kncokedOver = data.myNewTeam[i].knockedOver;
+          yourTeam[i].knockedOver = data.myNewTeam[i].knockedOver;
           yourTeam[i].poisoned = data.myNewTeam[i].poisoned;
           yourTeam[i].burned = data.myNewTeam[i].burned;
           yourTeam[i].spiked = data.myNewTeam[i].spiked;
           yourTeam[i].flying = data.myNewTeam[i].flying;
+          yourTeam[i].alive = data.myNewTeam[i].alive;
         }
         
         for (let i = 0; i < enemyTeam.length; i++)
         {
           enemyTeam[i].HLTH = data.theirNewTeam[i].HLTH;
           enemyTeam[i].DEF = data.theirNewTeam[i].DEF;
-          enemyTeam[i].kncokedOver = data.theirNewTeam[i].knockedOver;
+          enemyTeam[i].knockedOver = data.theirNewTeam[i].knockedOver;
           enemyTeam[i].poisoned = data.theirNewTeam[i].poisoned;
           enemyTeam[i].burned = data.theirNewTeam[i].burned;
           enemyTeam[i].spiked = data.theirNewTeam[i].spiked;
           enemyTeam[i].flying = data.theirNewTeam[i].flying;
+          enemyTeam[i].alive = data.theirNewTeam[i].alive;
         }
       });
       
@@ -1437,7 +1438,7 @@
       <h2>Sound Design:<h3>Mark Obeldobel</h3></h2>
     </div>
     <div id="asset_production">
-      <h2>Asset Production: <h3>Andrew McMahon</h3></h2>
+      <h2>Asset Production: <h3>Mark Obeldobel</h3></h2>
     </div>
   </div>
   
