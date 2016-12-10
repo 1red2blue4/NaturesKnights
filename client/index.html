@@ -340,7 +340,7 @@
       [CreateAttack("Dive", 3, 0, "Dive straight through an enemy.",
         CreateSpecialFeatures(false, false, false, false, true, true, "any")
       ),
-      CreateAttack("Blossom", 3, 2, "Heal a character 3 health.", 
+      CreateAttack("Blossom", 3, 2, "Heal a character with magical pedals.", 
         CreateSpecialFeatures(false, false, false, false, false, false, "healAny")
       )],
       knightImages.blossomBird,
@@ -449,8 +449,9 @@
       
       frame++;
       
-      console.dir(myTeam);
-      console.dir(yourTeam);
+      //console.dir(enemyTeam);
+      //console.dir(yourTeam);
+      //console.dir(turnOrder);
       
       //console.log(`Target Knight: ${targetKnight}`);
       //console.log(`Targetted Knight: ${targettedKnight}`)
@@ -475,9 +476,6 @@
         }
         else if (!showTargetBox && !showAssistBox)
         {
-          //showTargetBox = false;
-          
-          //targetKnight = targetBoxNum + 5;
           useAttack(currKnight.attacks[currentButton], getAttackType);
         }
         
@@ -496,6 +494,7 @@
         else if (showTargetBox)
         {
           showTargetBox = false;
+          //targetBoxNum = calculateFront(enemyTeam);
           targetKnight = targetBoxNum + 5;
           useAttack(currKnight.attacks[currentButton], getAttackType);
         }
@@ -599,7 +598,10 @@
     const useAttack = (myAttack, targetType) => {
       
       useAttackCalc(myAttack, targetType);
-      useAttackUI(myAttack, targetType);
+      if (myAttack.specialFeatures.targets !== "healAny")
+      {
+        useAttackUI(myAttack, targetType);
+      }
       useAttackCleanup(targetType);
       
     };
@@ -621,7 +623,6 @@
           yourTeam[i].shaking = false;
         }
       }
-      //myKeys.keyup[myKeys.KEYBOARD.KEY_ENTER] = false;
       socket.emit("sendDamageUI", {damType: sendDamageInfo.type, damNum: sendDamageInfo.number, yourRoomNum, targetNum: targetKnight - 5, targetType });
       socket.emit("recalculateTeams", {yourTeam, enemyTeam, yourRoomNum});
     };
@@ -646,13 +647,16 @@
       }
       else if (myAttack.specialFeatures.targets === "healAny")
       {
+        /*
+        console.log("Healing!");
         sendDamageInfo.number = myAttack.ATK;
         type = "heal";
         yourTeam[targetKnight].HLTH += sendDamageInfo.number;
         if (yourTeam[targetKnight].HLTH > yourTeam[targetKnight].maxHealth)
         {
-          
-        }yourTeam[targetKnight].HLTH = yourTeam[targetKnight].maxHealth;
+          yourTeam[targetKnight].HLTH = yourTeam[targetKnight].maxHealth;
+        }
+        */
       }
     };
 
@@ -723,7 +727,15 @@
       showHealSend = true;
       showHealReceive = false;
       sendDamageInfo.type = "heal";
-      //sendDamageInfo.number = myAbility.ATK;
+      sendDamageInfo.number = myAbility.ATK;
+      if (yourTeam[targetKnight].alive)
+      {
+        yourTeam[targetKnight].HLTH += myAbility.ATK;
+      }
+      if (yourTeam[targetKnight].HLTH > yourTeam[targetKnight].maxHealth)
+      {
+        yourTeam[targetKnight].HLTH = yourTeam[targetKnight].maxHealth;
+      }
       freezeFrameSend = frame;
       showAssistBox = false;
       turnTaken = true;
@@ -741,13 +753,11 @@
       //healHurt = "hurt";
       if (myAttack.specialFeatures.targets === "front")
       {
-        targetKnight = 5;
+        targetKnight = 5 + calculateFront(enemyTeam);
       }
       else if (myAttack.specialFeatures.targets === "any")
       {
-        //targetKnight = 5;
         showTargetBox = true;
-        //targetKnight = selectEnemyTarget();
       }
       else if (myAttack.specialFeatures.targets === "all")
       {
@@ -755,7 +765,6 @@
       }
       else if (myAttack.specialFeatures.targets === "healAny")
       {
-        //healHurt = "heal";
         showAssistBox = true;
       }
       else
@@ -764,6 +773,20 @@
       }
       
       return "unimportant";
+    };
+
+    const calculateFront = (team) => {
+      let teamMemNum = 0;
+      for (let i = 0; i < team.length; i++)
+      {
+        if (!team[i].alive)
+        {
+          continue;
+        }
+        teamMemNum = i;
+        break;
+      }
+      return teamMemNum;
     };
 
     const selectEnemyTarget = () => {
@@ -789,7 +812,6 @@
         color = `rgba(0, 0, 255, ${myAlphVal} )`;
       }
       fillText(number, 40 + 75*pos, 180 + 50*alphValSend, "22pt roboto", color, "center", "middle");
-      //fillText(`${distToEnd} / ${timeToWait}`, 150, 150, "20pt nature", "rgb(100, 100, 100)", "center", "middle");
       return myAlphVal;
     };
 
@@ -880,7 +902,7 @@
         //draw normally
         else if (myTeam[i].alive === true)
         {
-          console.log(`Alive: ${myTeam[i].alive}`);
+          //console.log(`Alive: ${myTeam[i].alive}`);
           ctx.drawImage(knightImages[myTeam[i].stringName], 0, 0, 300, 300, yourTeamStartPos - teamMemberIncrement*i, 250, 75, 75);
         }
         
@@ -893,11 +915,11 @@
         }
         else if (yourTeam[i].HLTH < yourTeam[i].maxHealth && yourTeam[i].HLTH > 0)
         {
-          yourTeam[i].fontColor = "rgb(165, 165, 35)";
+          yourTeam[i].fontColor = "rgb(135, 135, 15)";
         }
         else if (yourTeam[i].HLTH == 0)
         {
-          yourTeam[i].fontColor = "rgb(235, 20, 20)";
+          yourTeam[i].fontColor = "rgb(135, 5, 5)";
           yourTeam[i].alive = false;
         }
         
@@ -1339,15 +1361,6 @@
       knightImages.redRect.src = '../media/redRect.png';
       knightImages.savageTiger.src = '../media/savage_tiger_taken.png';
       knightImages.chipmonk.src = '../media/chipmonk.png';
-      
-      /*
-      spongeImage.src = '../media/sponge.png';
-      seaSerpentImage.src = '../media/sea_serpent.png';
-      blossomBirdImage.src = '../media/blossom_bird.png';
-      monkeyImage.src = '../media/monkey.png';
-      stupidSnakeImage.src = '../media/stupid_snake.png';
-      redRectImage.src = '../media/redRect.png';
-      */
     };
 
     const loadScreenUI = () => {
@@ -1374,6 +1387,7 @@
       backgroundMusic.loop = true;
     };
 
+    //run when the program begins; sets everything up
     const init = () => {
       socket = io.connect();
       canvas.width = 750;
@@ -1387,17 +1401,18 @@
       loadImages();
       loadAudio();
       loadScreenUI();
-      //backgroundMusic.play();
-      //ghostImg.src = '../media/ghost.png';
       setCalls();
-      //startFight();
       update();
     }
-
+    
+    //updates the game every frame
     function update()
     {
+      //draw the game
       draw(yourTeam, enemyTeam);
+      //check for player input
       checkPlayerInput();
+      //if a character is dead, their health is always exactly 0
       for (let i = 0; i < yourTeam.length; i++)
       {
         if (yourTeam[i].HLTH <= 0)
@@ -1415,6 +1430,37 @@
           enemyTeam[i].alive = false;
         }
       }
+      /*
+      if (turnOrder !== {} && bothPlayersAvailable)
+      {
+        for (let i = 0; i < turnOrder.length; i++)
+        {
+          if (turnOrder[i].HLTH <= 0)
+          {
+            turnOrder[i].HLTH = 0;
+            turnOrder[i].alive = false;
+          }
+        }
+        console.dir(!turnOrder[0].alive);
+      }
+      */
+      
+      //if the current character is not alive, go to the next turn
+      for (let i = 0; i < yourTeam.length; i++)
+      {
+        if (takingTurn && !yourTeam[i].alive && yourTeam[i].name === currKnight.name)
+        {
+          takingTurn = false;
+          turnTaken = true;
+          socket.emit("takeTurn", {yourRoomNum, turnOrder})
+        }
+      }
+      
+      
+      //console.dir(turnOrder !== {});
+      //console.dir(bothPlayersAvailable);
+      //console.dir(bothPlayersAvailable);
+      
       
       
       window.requestAnimationFrame(update);
