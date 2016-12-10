@@ -610,6 +610,15 @@
       
       showDealDamage = true;
       showTakeDamage = false;
+      //take damage if poisoned
+      for (let i = 0; i < yourTeam.length; i++)
+      {
+        if (yourTeam[i].poisoned && yourTeam[i].name === currentKnight.name)
+        {
+          yourTeam[i].HLTH -= 1;
+          showTakeDamage = true;
+        }
+      }
       sendDamageInfo.type = "hurt";
       freezeFrameSend = frame;
       showTargetBox = false;
@@ -624,7 +633,6 @@
         }
       }
       socket.emit("sendDamageUI", {damType: sendDamageInfo.type, damNum: sendDamageInfo.number, yourRoomNum, targetNum: targetKnight - 5, targetType });
-      socket.emit("recalculateTeams", {yourTeam, enemyTeam, yourRoomNum});
     };
 
     const useAttackCalc = (myAttack, targetType) =>{
@@ -672,23 +680,28 @@
           sendDamageInfo.number = 0;
         }
       }
+      //calculate flying
+      if (enemyTeam[targetKnight-5].flying && !myAttack.specialFeatures.hitsFlying && targetType !== "attackAll")
+      {
+        sendDamageInfo.number = "Miss!";
+      }
       //calculate knock over
-      if (myAttack.specialFeatures.knocksOver && enemyTeam[targetKnight-5].canKnockOver)
+      if (myAttack.specialFeatures.knocksOver && enemyTeam[targetKnight-5].canKnockOver && sendDamageInfo.number !== "Miss!")
       {
         enemyTeam[targetKnight-5].knockedOver = true;
       }
       //calculate poison
-      if (myAttack.specialFeatures.poisons)
+      if (myAttack.specialFeatures.poisons && sendDamageInfo.number !== "Miss!" && sendDamageInfo.number !== 0)
       {
         enemyTeam[targetKnight-5].poisoned = true;
       }
       //calculate burn
-      if (myAttack.specialFeatures.burns)
+      if (myAttack.specialFeatures.burns && sendDamageInfo.number !== "Miss!" && sendDamageInfo.number !== 0)
       {
         enemyTeam[targetKnight-5].burned = true;
       }
       //calculate spiked
-      if (myAttack.specialFeatures.direct && enemyTeam[targetKnight-5].spiked)
+      if (myAttack.specialFeatures.direct && enemyTeam[targetKnight-5].spiked && sendDamageInfo.number !== "Miss!")
       {
         let saveCharNum = -1;
         for (let i = 0; i < yourTeam.length; i++)
@@ -699,11 +712,6 @@
           }
         }
         yourTeam[saveCharNum].HLTH -= 1;
-      }
-      //calculate flying
-      if (enemyTeam[targetKnight-5].flying && !myAttack.specialFeatures.hitsFlying && targetType !== "attackAll")
-      {
-        sendDamageInfo.number = "Miss!";
       }
       //finally, deal damage
       if (typeof(sendDamageInfo.number) === "number")
@@ -720,6 +728,7 @@
       }
       //set up next turn
       socket.emit("takeTurn", { turnOrder, yourRoomNum });
+      socket.emit("recalculateTeams", {yourTeam, enemyTeam, yourRoomNum});
     };
 
     const useAssistAbility = (myAbility, targetType) => {
@@ -1047,6 +1056,36 @@
           fillText("Awaiting enemy turn....", WIDTH/2 - 100, buttonPosY, "18pt nature", "rgb(15, 15, 0)", "left", "middle");
         }
       }
+      //if you win, show victory
+      if (bothPlayersAvailable && !enemyLeft)
+      {
+        let enemyDeathCount = 0;
+        for (let i = 0; i < enemyTeam.length; i++)
+        {
+          if (!enemyTeam[i].alive)
+          {
+            enemyDeathCount++;
+          }
+        }
+        if (enemyDeathCount === enemyTeam.length)
+        {
+          fillText("Victory!", WIDTH/2, 75, "24pt nature", "rgb(0, 120, 0)", "center", "middle");
+        }
+        let yourDeathCount = 0; 
+        for (let i = 0; i < yourTeam.length; i++)
+        {
+          if (!yourTeam[i].alive)
+          {
+            yourDeathCount++;
+          }
+        }
+        if (yourDeathCount === yourTeam.length)
+        {
+          fillText("Defeat", WIDTH/2, 75, "24pt nature", "rgb(120, 0, 0)", "center", "middle");
+        }
+      }
+      
+      //if you lose, show defeat
       //show controls at top
       fillText("Use Attack: ENTER", 10, 10, "14pt nature", "rgb(25, 55, 5)", "left", "top");
       fillText("Confirm Enemy Selection: SHIFT", 10, 35, "14pt nature", "rgb(25, 55, 5)", "left", "top");
@@ -1196,6 +1235,14 @@
           stopBlinking = false;
         }
         currKnight = data.next;
+        //take burn damage
+        for (let i = 0; i < yourTeam.length; i++)
+        {
+          if (yourTeam[i].burned && currentKnight.name === yourTeam[i].name)
+          {
+            yourTeam[i].HLTH -= 1;
+          }
+        }
       });
       
       socket.on("displayEnemyLeft", () => {
