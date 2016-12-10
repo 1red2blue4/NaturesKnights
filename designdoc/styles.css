@@ -1,0 +1,37 @@
+@font-face{
+	font-family: nature;
+	src: url("dream_orphans/dreamorphans.ttf");
+}
+
+h1, h2{
+	font-family: nature;
+	color: rgb(10, 90, 10);
+}
+
+#wireframeImg, #gameImg1, #gameImg2{
+	width: 640px;
+	height: 385px;
+    display: block;
+}
+
+#wireframe{
+	position: absolute;
+	left: 50%;
+	width: 100%;
+}
+
+p{
+	font-family: arial, sans-serif;
+	color: rgb(0, 40, 0);
+	width: 40%;
+	line-height: 25px;
+}
+
+footer{
+font-family: nature;
+	color: rgb(0, 40, 0);
+}
+
+body{
+	background-color: rgb(220, 200, 255);
+}
